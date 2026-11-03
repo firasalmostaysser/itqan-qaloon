@@ -1,0 +1,13 @@
+{
+  "name": "itqan-qaloon-build",
+  "private": true,
+  "type": "module",
+  "description": "Builds the pre-shaped Qaloon data and the page for «الطريق إلى الإتقان».",
+  "scripts": {
+    "data": "node build.mjs",
+    "page": "node page.mjs",
+    "build": "node build.mjs && node page.mjs",
+    "test": "node ../test/run.js 1,111,112 && node ../test/words.js"
+  },
+  "dependencies": { "harfbuzzjs": "1.6.4" }
+}
