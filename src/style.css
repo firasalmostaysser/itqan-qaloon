@@ -222,3 +222,11 @@ textarea { width: 100%; resize: vertical; }
 @keyframes slide { 0% { transform: translateX(-120%); } 100% { transform: translateX(260%); } }
 .foot { max-width: 980px; margin: 28px auto 0; color: var(--muted); font-size: 12.5px; text-align: center; display: grid; gap: 2px; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Recorder */
+.recbtn { width: 72px; height: 72px; border-radius: 50%; border: 5px solid #fff; background: #D7263D; box-shadow: 0 0 0 2px #D7263D; cursor: pointer; }
+.recbtn.on { border-radius: 18px; animation: pulse 1.2s infinite ease-in-out; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 8px rgba(215, 38, 61, .25); } }
+.rec-timer { color: #FF6B6B; font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 600; }
+.stage video#rv { background: #000; }
+#stageRoot:not(:empty) ~ .toast { bottom: auto; top: calc(64px + env(safe-area-inset-top, 0px)); }

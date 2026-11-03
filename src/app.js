@@ -12,7 +12,7 @@
     del(k) { try { localStorage.removeItem("itqan:" + k); } catch (e) { /* ignore */ } },
   };
   // A video is either an archive.org (or any https) link, or an asset id uploaded inside the Claude page.
-  const blobUrl = (id) => (/^https?:\/\//.test(id) ? id : "/_blob/" + id);
+  const blobUrl = (id) => (/^(https?:\/\/|media\/)/.test(id) ? id : "/_blob/" + id);
   const CORE = ["shadid", "bayni", "rikhw", "ghunna", "harakat", "takhlis"];
 
   /* ---------------- the cheikh's lessons (his course, in his order) ---------------- */
@@ -255,6 +255,7 @@
     v.innerHTML = `
       ${lesson ? `<div class="lesson-banner"><h3>الدرس ${AR(LESSONS.indexOf(lesson) + 1)}: ${esc(lesson.title)}</h3><p>${esc(lesson.text)}</p>
         <div class="row"><button class="btn primary" id="lessonDone">${(LS.get("done", [])).includes(lesson.id) ? "أنهيت هذا الدرس ✓" : "أنهيت الدرس"}</button><button class="btn ghost" id="lessonExit">الخروج من الدرس</button><a class="btn ghost" href="#lessons">كل الدروس</a></div></div>` : ""}
+      ${CAN_EDIT && !lesson ? `<div class="lesson-banner"><h3>أدوات الشيخ</h3><p>اضغط رقم الآية ${canRecord() ? "لتسجيل تلاوتها بالكاميرا" : "لإضافة فيديو تلاوتها"}، واضغط أي كلمة لتعديل ألوانها أو تسجيل نطقها.</p></div>` : ""}
       <div class="bar">
         <div class="field"><label for="surahSel">السورة</label><select id="surahSel">${opts}</select></div>
         <div class="field"><label for="modeSel">القراءة</label><select id="modeSel">
@@ -519,7 +520,7 @@
         <button class="btn primary" id="aTable">جدول التدريب لهذه الآية</button>
         ${hasRaw ? `<button class="btn" id="aPlay">▶ تلاوة الشيخ للآية</button>` : `<span class="empty">لا توجد تلاوة مسجّلة لهذه الآية بعد.</span>`}
       </div>
-      ${CAN_EDIT ? `<div class="section"><h4>أدوات الشيخ</h4><div class="bar">
+      ${CAN_EDIT ? `<div class="section"><h4>أدوات الشيخ</h4>${canRecord() ? `<div class="bar"><button class="btn primary" id="aRec">● تسجيل تلاوة الآية بالكاميرا</button></div>` : ""}<div class="bar">
         ${hasRaw ? `<button class="btn" id="aSync">مزامنة الكلمات${hasVid ? " (مُزامنة)" : ""}</button>` : ""}
       </div><h4>فيديو تلاوة الآية</h4>${videoControlsHTML("a", !!hasRaw)}</div>` : ""}
     </section>`;
@@ -529,13 +530,20 @@
     if (hasRaw) $("#aPlay", root).onclick = () => { closeSheet(); openRecitation(S, ai); };
     if (CAN_EDIT) {
       bindVideoControls(root, "a", `a:${S.n}:${ay.a}`, (added) => { closeSheet(); if (added) openSync(S, ai); });
+      const rec = $("#aRec", root);
+      if (rec) rec.onclick = () => {
+        closeSheet();
+        openRecorder({ key: `a:${S.n}:${ay.a}`, ayahKey: true, title: `سورة ${META.surahs[S.n - 1].ar} · الآية ${AR(ay.a)}`,
+          html: ay.w.map((wd, wi) => (wd[3] ? "" : `<span class="w">${wordSVG(wd, colorsFor(analyze(S, ai)[wi], visibleSet(), ovFor(S.n, ay.a, wi, wd[0])))}</span>`)).join(" "),
+          done: (local) => openSync(S, ai, local) });
+      };
       if (hasRaw) $("#aSync", root).onclick = () => { closeSheet(); openSync(S, ai); };
     }
   }
-  function openSync(S, ai) {
+  function openSync(S, ai, local) {
     const ay = S.ayahs[ai], key = `a:${S.n}:${ay.a}`;
     const aid = STATE.videos[key];
-    if (!aid) return;
+    if (!aid && !local) return;
     const real = ay.w.map((w, i) => (w[3] ? -1 : i)).filter((i) => i >= 0);
     let k = 0, times = [];
     const root = $("#stageRoot");
@@ -550,9 +558,19 @@
       <div class="stage-top"><span class="title">مزامنة الكلمات · الآية ${AR(ay.a)}: شغّل الفيديو واضغط الزر عند بداية كل كلمة</span><button class="iconbtn" id="sClose" aria-label="إغلاق">✕</button></div>
       <video id="sv" playsinline controls></video>
       <div class="stage-word"><div class="ayahline"></div>
-        <div class="stage-ctrl"><button class="btn" id="syncStart">▶ ابدأ من البداية</button><button class="btn" id="syncNext">التالي</button><button class="btn" id="syncUndo">تراجع</button><button class="btn" id="syncSave">حفظ التوقيت</button></div></div></div>`;
+        <div class="stage-ctrl"><button class="btn" id="syncAuto">توزيع تلقائي</button><button class="btn" id="syncStart">▶ ابدأ من البداية</button><button class="btn" id="syncNext">التالي</button><button class="btn" id="syncUndo">تراجع</button><button class="btn" id="syncSave">حفظ التوقيت</button></div></div></div>`;
     const v = $("#sv", root);
-    v.src = blobUrl(aid);
+    v.src = local ? local.src : blobUrl(aid);
+    $("#syncAuto", root).onclick = () => {
+      const d = isFinite(v.duration) && v.duration > 0 ? v.duration : local && local.duration;
+      if (!d) { toast("انتظر حتى يُحمَّل الفيديو ثم أعد المحاولة."); return; }
+      const lens = real.map((wi) => plain(ay.w[wi][0]).length || 1), tot = lens.reduce((a, b) => a + b, 0);
+      const lead = Math.min(0.4, d * 0.05), span = d - lead - Math.min(0.3, d * 0.03);
+      let acc = 0;
+      times = real.map((wi, i) => { const t = lead + (span * acc) / tot; acc += lens[i]; return [wi, t]; });
+      k = real.length; draw();
+      toast("وُزّعت الكلمات تقديرياً على مدة التلاوة. احفظ، أو اضغط «ابدأ من البداية» للضبط باليد.", 6000);
+    };
     const mark = () => { if (k >= real.length) return; times.push([real[k], Math.max(0, v.currentTime - 0.05)]); k++; draw(); };
     $("#syncStart", root).onclick = () => { times = []; k = 0; v.currentTime = 0; v.play().catch(() => {}); draw(); };
     $("#syncNext", root).onclick = mark;
@@ -599,7 +617,7 @@
       <p style="margin:0;font-size:13px;color:var(--muted)">اضغط على أي جزء لتبديل لونه بين الأحكام، ثم احفظ.</p>
       <div class="slots">${slots}</div>
       <div class="bar"><button class="btn primary" id="ovSave">حفظ الألوان</button><button class="btn" id="ovReset">إرجاع للتلقائي</button></div>
-      <h4 style="margin-top:6px">فيديو نطق الكلمة</h4>${videoControlsHTML("vid", hasVid)}
+      <h4 style="margin-top:6px">فيديو نطق الكلمة</h4>${canRecord() ? `<div class="bar"><button class="btn primary" id="wRec">● تسجيل نطق الكلمة بالكاميرا</button><span style="font-size:12.5px;color:var(--muted)">يُستعمل في كل مواضع هذه الكلمة</span></div>` : ""}${videoControlsHTML("vid", hasVid)}
       <label for="noteTx" style="font-size:13px;color:var(--muted)">ملاحظة الشيخ على الكلمة</label><textarea id="noteTx" rows="2">${esc(note)}</textarea>
       <div class="bar"><button class="btn" id="noteSave">حفظ الملاحظة</button></div></div>`;
   }
@@ -627,7 +645,173 @@
     };
     $("#ovReset", root).onclick = async () => { delete STATE.overrides[keyNow()]; SHEET.draft = null; await persist(); redrawMushaf(); drawSheet(); };
     bindVideoControls(root, "vid", keyNow(), () => drawSheet());
+    const wRec = $("#wRec", root);
+    if (wRec) wRec.onclick = () => openRecorder({ key: "f:" + wd[0], title: "نطق الكلمة", html: `<span class="w">${wordSVG(wd, colorsFor(an, visibleSet(), ovFor(S.n, ay.a, wi, wd[0])))}</span>`, big: true, done: () => drawSheet() });
     $("#noteSave", root).onclick = async () => { const t = $("#noteTx", root).value.trim(); if (t) STATE.notes[keyNow()] = t; else delete STATE.notes[keyNow()]; await persist(); drawSheet(); };
+  }
+
+  /* ---------------- recording from the platform (camera) ---------------- */
+  const canRecord = () => STATIC && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+  function pickMime() {
+    const list = ["video/mp4;codecs=avc1,mp4a.40.2", "video/mp4", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"];
+    return list.find((t) => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) || "";
+  }
+  const mmss = (sec) => AR(Math.floor(sec / 60)) + ":" + AR(String(Math.floor(sec % 60)).padStart(2, "0"));
+  function openRecorder(o) {
+    const root = $("#stageRoot");
+    let stream = null, rec = null, chunks = [], blob = null, localUrl = null, started = 0, secs = 0, timer = null;
+    const stopStream = () => { if (stream) stream.getTracks().forEach((t) => t.stop()); stream = null; };
+    const close = () => { stopStream(); clearInterval(timer); root.innerHTML = ""; document.removeEventListener("keydown", onKey); };
+    const onKey = (e) => { if (e.key === "Escape" && !(rec && rec.state === "recording")) close(); };
+    document.addEventListener("keydown", onKey);
+    root.innerHTML = `<div class="stage" role="dialog" aria-label="التسجيل">
+      <div class="stage-top"><span class="title">${esc(o.title)}</span><span class="rec-timer" id="rT" hidden></span><button class="iconbtn" id="rClose" aria-label="إغلاق">✕</button></div>
+      <video id="rv" playsinline muted autoplay></video>
+      <div class="stage-word"><div class="${o.big ? "bigword" : "ayahline"}">${o.html || ""}</div><div class="stage-ctrl" id="rCtl"></div><div id="rMsg" style="font-size:13px;color:#6A6255;text-align:center"></div></div></div>`;
+    const v = $("#rv", root), ctl = $("#rCtl", root), msg = $("#rMsg", root);
+    $("#rClose", root).onclick = close;
+    const setUI = (state) => {
+      if (state === "live") { ctl.innerHTML = `<button class="recbtn" id="rGo" aria-label="ابدأ التسجيل"></button>`; msg.textContent = "اضغط الزر الأحمر ثم اقرأ. اضغطه مرة أخرى عند الانتهاء."; $("#rGo", root).onclick = start; }
+      if (state === "rec") { ctl.innerHTML = `<button class="recbtn on" id="rStop" aria-label="إيقاف التسجيل"></button>`; msg.textContent = "جارٍ التسجيل…"; $("#rStop", root).onclick = () => rec.stop(); }
+      if (state === "review") { ctl.innerHTML = `<button class="btn" id="rAgain">↺ إعادة التسجيل</button><button class="btn" id="rSave" style="background:#0F4C3A;color:#fff;border-color:#0F4C3A">✓ حفظ</button>`; msg.textContent = "شاهد التسجيل، ثم احفظه أو أعده."; $("#rAgain", root).onclick = live; $("#rSave", root).onclick = save; }
+      if (state === "saving") { ctl.innerHTML = ""; }
+    };
+    async function live() {
+      blob = null; if (localUrl) { URL.revokeObjectURL(localUrl); localUrl = null; }
+      v.removeAttribute("src"); v.controls = false; v.muted = true; v.style.transform = "scaleX(-1)";
+      try {
+        if (!stream) stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }, audio: { echoCancellation: true, noiseSuppression: true } });
+      } catch (e) { msg.textContent = "لم يُسمح باستعمال الكاميرا والميكروفون. اسمح بهما من إعدادات المتصفح ثم أعد المحاولة."; ctl.innerHTML = ""; return; }
+      v.srcObject = stream; v.play().catch(() => {});
+      setUI("live");
+    }
+    function start() {
+      chunks = [];
+      const mime = pickMime();
+      try { rec = new MediaRecorder(stream, Object.assign({ videoBitsPerSecond: 600000, audioBitsPerSecond: 64000 }, mime ? { mimeType: mime } : {})); }
+      catch (e) { rec = new MediaRecorder(stream); }
+      rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+      rec.onstop = () => {
+        clearInterval(timer); $("#rT", root).hidden = true;
+        blob = new Blob(chunks, { type: (rec.mimeType || "video/webm").split(";")[0] });
+        stopStream();
+        localUrl = URL.createObjectURL(blob);
+        v.srcObject = null; v.style.transform = ""; v.muted = false; v.controls = true; v.src = localUrl; v.play().catch(() => {});
+        setUI("review");
+      };
+      rec.start(1000); started = Date.now(); secs = 0;
+      const T = $("#rT", root); T.hidden = false; T.textContent = mmss(0);
+      timer = setInterval(() => { secs = (Date.now() - started) / 1000; T.textContent = mmss(secs); if (secs > 300) rec.stop(); }, 250);
+      setUI("rec");
+    }
+    async function save() {
+      setUI("saving");
+      msg.textContent = "جارٍ حفظ الفيديو… لا تغلق الصفحة.";
+      try {
+        const url = await storeVideo(blob, o.key, (f) => (msg.textContent = `جارٍ رفع الفيديو… ${AR(Math.round(f * 100))}٪`));
+        STATE.videos[o.key] = url;
+        if (o.ayahKey) delete STATE.timings[o.key];
+        await persist();
+        const local = { src: localUrl, duration: secs };
+        root.innerHTML = ""; document.removeEventListener("keydown", onKey);
+        toast("حُفظ الفيديو. يظهر للطلاب خلال دقائق.", 5000);
+        if (o.done) o.done(local);
+      } catch (e) {
+        msg.textContent = "تعذّر حفظ الفيديو. تحقّق من الاتصال ثم اضغط «حفظ» مرة أخرى.";
+        setUI("review");
+      }
+    }
+    live();
+  }
+  /** Saves a recording where it will last: archive.org when its keys are set, otherwise the GitHub repository (site/media). */
+  async function storeVideo(blob, key, onProgress) {
+    const ext = /mp4/.test(blob.type) ? "mp4" : "webm";
+    const parts = key.split(":");
+    const sNum = parts[0] === "a" || parts[0] === "o" ? parts[1] : null;
+    const name = (parts[0] === "f" ? "w-" + Date.now().toString(36) : `s${String(sNum).padStart(3, "0")}-a${String(parts[2]).padStart(3, "0")}-${Date.now().toString(36)}`) + "." + ext;
+    const ia = LS.get("ia", null);
+    if (ia && ia.a && ia.s) {
+      try {
+        const item = `${ia.p || "itqan-qaloon"}-${sNum ? "s" + String(sNum).padStart(3, "0") : "words"}`;
+        const title = `الطريق إلى الإتقان – ${sNum ? "سورة " + META.surahs[+sNum - 1].ar : "نطق الكلمات"}`;
+        return await iaUpload(blob, item, name, ia, title, onProgress);
+      } catch (e) { /* archive.org refused or unreachable: keep it in the repository */ }
+    }
+    if (GH.get()) return await ghUploadMedia(blob, name);
+    throw new Error("no storage");
+  }
+  function iaUpload(blob, item, name, ia, title, onProgress) {
+    return new Promise((res, rej) => {
+      const x = new XMLHttpRequest();
+      x.open("PUT", `https://s3.us.archive.org/${item}/${name}`);
+      x.setRequestHeader("authorization", `LOW ${ia.a}:${ia.s}`);
+      x.setRequestHeader("x-amz-auto-make-bucket", "1");
+      x.setRequestHeader("x-archive-meta-mediatype", "movies");
+      x.setRequestHeader("x-archive-meta-collection", "opensource_movies");
+      x.setRequestHeader("x-archive-meta-language", "ara");
+      x.setRequestHeader("x-archive-meta-title", "uri(" + encodeURIComponent(title) + ")");
+      x.setRequestHeader("x-archive-meta-licenseurl", "https://creativecommons.org/licenses/by-nc-nd/4.0/");
+      x.upload.onprogress = (e) => { if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total); };
+      x.onload = () => (x.status >= 200 && x.status < 300 ? res(`https://archive.org/download/${item}/${name}`) : rej(new Error("archive " + x.status)));
+      x.onerror = () => rej(new Error("archive network"));
+      x.send(blob);
+    });
+  }
+  const blobToB64 = (b) => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.onerror = rej; r.readAsDataURL(b); });
+  async function ghUploadMedia(blob, name) {
+    const g = GH.get(), base = `/repos/${g.repo}`, path = `site/media/${name}`;
+    const content = await blobToB64(blob);
+    const made = await ghFetch(`${base}/git/blobs`, { method: "POST", body: JSON.stringify({ content, encoding: "base64" }) }, g.token);
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const head = (await ghFetch(`${base}/git/ref/heads/${g.branch}`, {}, g.token)).object.sha;
+      const baseTree = (await ghFetch(`${base}/git/commits/${head}`, {}, g.token)).tree.sha;
+      const tree = await ghFetch(`${base}/git/trees`, { method: "POST", body: JSON.stringify({ base_tree: baseTree, tree: [{ path, mode: "100644", type: "blob", sha: made.sha }] }) }, g.token);
+      const commit = await ghFetch(`${base}/git/commits`, { method: "POST", body: JSON.stringify({ message: "فيديو جديد من الشيخ", tree: tree.sha, parents: [head] }) }, g.token);
+      try { await ghFetch(`${base}/git/refs/heads/${g.branch}`, { method: "PATCH", body: JSON.stringify({ sha: commit.sha }) }, g.token); return `media/${name}`; }
+      catch (e) { if (e.status !== 422 || attempt) throw e; }
+    }
+    throw new Error("github media");
+  }
+  /* ---------------- the cheikh's one-tap link (no GitHub account needed) ---------------- */
+  const b64url = (str) => b64utf8(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  function readKeyLink() {
+    const h = location.hash || "";
+    if (!h.startsWith("#k=")) return;
+    try {
+      let b = h.slice(3).replace(/-/g, "+").replace(/_/g, "/");
+      while (b.length % 4) b += "=";
+      const j = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b), (c) => c.charCodeAt(0))));
+      if (j.r && j.t) GH.set({ repo: j.r, token: j.t, branch: j.b || "main" });
+      if (j.ia) LS.set("ia", j.ia);
+      LS.set("welcome", 1);
+    } catch (e) { /* malformed link */ }
+    history.replaceState(null, "", location.pathname + location.search + "#mushaf");
+  }
+  function adminKeyLink(body) {
+    const ia = LS.get("ia", null) || {};
+    const g = GH.get();
+    const prefix = ia.p || "itqan-qaloon-" + Math.random().toString(36).slice(2, 6);
+    body.innerHTML = `<div class="card" style="max-width:640px"><h3>رابط دخول الشيخ</h3>
+      <p>رابط واحد يرسله المشرف إلى الشيخ عبر واتساب. يفتحه الشيخ مرة واحدة على هاتفه فتظهر له أدوات الشيخ دائماً، دون أي حساب.</p>
+      <div class="kv">
+        <label for="iaA">مفتاح archive.org (Access key)</label><input type="text" id="iaA" dir="ltr" value="${esc(ia.a || "")}" placeholder="اختياري">
+        <label for="iaS">المفتاح السري (Secret key)</label><input type="password" id="iaS" dir="ltr" value="${esc(ia.s || "")}" placeholder="اختياري">
+        <label for="iaP">اسم مجموعة الفيديو</label><input type="text" id="iaP" dir="ltr" value="${esc(prefix)}">
+      </div>
+      <p style="font-size:12.5px;color:var(--muted)">المفتاحان من <bdi dir="ltr">archive.org/account/s3.php</bdi> بعد إنشاء حساب المشروع. إن تُركا فارغين تُحفظ الفيديوهات في مستودع GitHub (يتّسع لنحو ألف فيديو قصير).</p>
+      <div class="bar"><button class="btn primary" id="mkLink">إنشاء رابط الشيخ</button></div><div id="linkOut" class="list"></div></div>`;
+    $("#mkLink", body).onclick = () => {
+      const iaNew = { a: $("#iaA", body).value.trim(), s: $("#iaS", body).value.trim(), p: $("#iaP", body).value.trim() || prefix };
+      if (iaNew.a && iaNew.s) LS.set("ia", iaNew);
+      const payload = { r: g.repo, t: g.token, b: g.branch };
+      if (iaNew.a && iaNew.s) payload.ia = iaNew;
+      const link = location.origin + location.pathname + "#k=" + b64url(JSON.stringify(payload));
+      const msgTxt = "السلام عليكم شيخنا، هذا رابط أدوات الشيخ في موقع «الطريق إلى الإتقان». افتحه مرة واحدة على هاتفك:\n" + link;
+      $("#linkOut", body).innerHTML = `<div class="item"><input type="text" readonly dir="ltr" value="${esc(link)}" style="flex:1;min-width:0" id="linkTx"><button class="btn" id="cpLink">نسخ</button></div>
+        <div class="item"><a class="btn primary" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(msgTxt)}">إرسال عبر واتساب</a>
+        <span class="grow" style="color:var(--muted)">أرسله للشيخ وحده: من يملك الرابط يستطيع التعديل. لإلغائه احذف الرمز من GitHub وأنشئ رابطاً جديداً.</span></div>`;
+      $("#cpLink", body).onclick = () => { const t = $("#linkTx", body); navigator.clipboard.writeText(t.value).then(() => toast("نُسخ الرابط."), () => { t.select(); }); };
+    };
   }
 
   /* ---------------- capabilities: saving & uploads ---------------- */
@@ -929,7 +1113,7 @@
       v.innerHTML = `<h2 class="page-title">لوحة الشيخ</h2><p class="lead">هذه الصفحة للشيخ ومن يملك صلاحية التعديل. افتح الصفحة بالحساب الذي يملك صلاحية التعديل لترى أدوات الألوان والفيديو.</p>`;
       return;
     }
-    const tabs = [["colors", "الألوان والأحكام"], ["rules", "ضوابط المحرّك"], ["edits", "الكلمات المعدّلة"], ["videos", "الفيديوهات"], ["backup", "نسخة احتياطية"]];
+    const tabs = [["colors", "الألوان والأحكام"], ["rules", "ضوابط المحرّك"], ["edits", "الكلمات المعدّلة"], ["videos", "الفيديوهات"], ["backup", "نسخة احتياطية"]].concat(STATIC ? [["key", "رابط الشيخ"]] : []);
     v.innerHTML = `<h2 class="page-title">لوحة الشيخ</h2>
       <p class="lead">كل تغيير هنا يُطبَّق مباشرة على المعاينة، ويصل إلى الطلاب بعد الضغط على «حفظ ونشر».</p>
       <div class="admin-tabs">${tabs.map(([k, l]) => `<button data-tab="${k}" aria-pressed="${ADMIN_TAB === k}">${l}</button>`).join("")}</div>
@@ -944,12 +1128,13 @@
     else if (ADMIN_TAB === "rules") adminRules(body);
     else if (ADMIN_TAB === "edits") adminEdits(body);
     else if (ADMIN_TAB === "videos") adminVideos(body);
+    else if (ADMIN_TAB === "key" && STATIC) adminKeyLink(body);
     else adminBackup(body);
   }
   async function previewHTML() {
     const S1 = await loadSurah(1), S111 = await loadSurah(111);
     const vis = new Set(ALLCATS.filter((c) => c.on).map((c) => c.id));
-    const line = (S, ai) => S.ayahs[ai].w.map((wd, wi) => wd[3] ? "" : `<span class="w">${wordSVG(wd, colorsFor(analyze(S, ai, "waqf")[wi], vis, ovFor(S.n, S.ayahs[ai].a, wi, wd[0])))}</span>`).join(" ") + ` <span class="ae">${wordSVG(S.ayahs[ai].e, null)}</span>`;
+    const line = (S, ai) => S.ayahs[ai].w.map((wd, wi) => wd[3] ? "" : `<span class="w" role="button" tabindex="0" data-ps="${S.n}" data-pai="${ai}" data-pwi="${wi}">${wordSVG(wd, colorsFor(analyze(S, ai, "waqf")[wi], vis, ovFor(S.n, S.ayahs[ai].a, wi, wd[0])))}</span>`).join(" ") + ` <span class="ae">${wordSVG(S.ayahs[ai].e, null)}</span>`;
     const b = META.basmala.map((wd, i) => `<span class="w">${wordSVG(wd, colorsFor(basmalaAn()[i], vis, null))}</span>`).join(" ");
     return `<div>${b}</div><div>${line(S1, 0)} ${line(S1, 1)}</div><div>${line(S111, 0)} ${line(S111, 2)}</div>`;
   }
@@ -964,10 +1149,11 @@
           <span style="color:var(--muted);font-size:12px">الأولوية ${AR(idx + 1)}${c.core ? " · من ألوان الشيخ" : ""}</span>${c.custom ? `<button class="linkbtn" data-del>حذف الحكم</button>` : ""}</div></div>`;
     }).join("");
     body.innerHTML = `<div class="preview" id="pv"><div class="loading" style="min-height:120px"><div class="bar-l"><i></i></div></div></div>
-      <p style="font-size:13px;color:var(--muted);margin:0 0 10px">الترتيب هو الأولوية: إذا اجتمع حكمان على الجزء نفسه من الحرف ظهر لون الأعلى. اللون الثاني لكل حكم يُستعمل في الوضع الليلي.</p>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 10px">اضغط أي كلمة في المعاينة أو في المصحف لتعديل ألوانها. الترتيب هو الأولوية: إذا اجتمع حكمان على الجزء نفسه من الحرف ظهر لون الأعلى. اللون الثاني لكل حكم يُستعمل في الوضع الليلي.</p>
       <div class="catrows">${rows}</div>
       <div class="bar" style="margin-top:12px"><button class="btn" id="addCat">إضافة حكم جديد</button><button class="btn" id="resetCats">استعادة ألوان الشيخ الافتراضية</button></div>`;
     const redrawPv = async () => { $("#pv", body).innerHTML = await previewHTML(); };
+    $("#pv", body).onclick = async (e) => { const w = e.target.closest("[data-ps]"); if (!w) return; openWord(await loadSurah(+w.dataset.ps), +w.dataset.pai, +w.dataset.pwi, "admin"); };
     redrawPv();
     let t = null;
     const later = () => { clearTimeout(t); t = setTimeout(redrawPv, 120); };
@@ -1120,6 +1306,7 @@
 
   /* ---------------- boot ---------------- */
   async function boot() {
+    readKeyLink();
     try {
       const [meta, gly, st, site] = await Promise.all([getJSON("data/meta.json"), getJSON("data/glyphs.json"), getJSON("data/state.json").catch(() => null), getJSON("data/site.json").catch(() => null)]);
       if (site) SITE = Object.assign(SITE, site);
@@ -1156,8 +1343,9 @@
       $("#ownerLink").hidden = false;
       if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
       if (GH.get()) { CAN_EDIT = true; $("#adminLink").hidden = false; setTopH(); }
-      const r = (location.hash || "").slice(1);
-      if (r === "admin" || r === "about") route();
+      if (CAN_EDIT && LS.get("welcome", 0)) { LS.del("welcome"); toast("مرحباً بك شيخنا. تمّ تفعيل أدوات الشيخ على هذا الجهاز.", 6000); }
+      const r = (location.hash || "#mushaf").slice(1);
+      if (r === "admin" || r === "about" || (CAN_EDIT && (r === "mushaf" || !ROUTES.includes(r)))) route();
     });
     cap("user").then(async (u) => {
       if (!u) return;
