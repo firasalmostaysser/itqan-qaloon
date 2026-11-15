@@ -63,6 +63,8 @@
     for (const c of ALLCATS) if (!PRIORITY.includes(c.id)) PRIORITY.push(c.id);
     RANK = new Map(PRIORITY.map((id, i) => [id, i]));
     applyColors();
+    const live = $("#liveLink"), url = STATE.settings && STATE.settings.liveUrl;
+    if (live) { live.hidden = !(url && /^https:\/\//.test(url)); if (!live.hidden) live.href = url; }
   }
   function legendOrder() {
     const L = (STATE.legend || CORE.concat(T.DEFAULT_ORDER.filter((x) => !CORE.includes(x)))).filter((id) => CATMAP.has(id));
@@ -83,7 +85,7 @@
   const mode = () => ui.mode || (STATE.settings && STATE.settings.mode) || "waqf";
   function engineSettings(m) {
     const st = STATE.settings || {};
-    return { mode: m || mode(), finalHaraka: st.finalHaraka || "keep", tanweenAtWaqf: st.tanweenAtWaqf || "harakat",
+    return { mode: m || mode(), finalHaraka: st.finalHaraka || "keep", 
       classes: Object.assign({}, T.SETTINGS.classes, STATE.classes || {}) };
   }
   function lessonById(id) { return LESSONS.find((l) => l.id === id) || null; }
@@ -117,7 +119,7 @@
     const idx = [], words = [];
     ay.w.forEach((w, i) => { if (!w[3]) { idx.push(i); words.push(w[0]); } });
     const W = T.analyzeAyah(words, { settings: engineSettings(m), prevWord: ai > 0 ? lastReal(S.ayahs[ai - 1]) : null,
-      nextWord: ai < S.ayahs.length - 1 ? firstReal(S.ayahs[ai + 1]) : null });
+      nextWord: ai < S.ayahs.length - 1 ? firstReal(S.ayahs[ai + 1]) : (S.n === 114 || S.n === 8 ? null : META.basmala[0][0]) });
     const out = ay.w.map(() => null);
     idx.forEach((wi, k) => (out[wi] = W[k]));
     anCache.set(key, out);
@@ -140,7 +142,10 @@
   /* ---------------- drawing: pre-shaped glyphs as SVG ---------------- */
   function buildDefs() {
     const parts = [];
-    for (const gid in GLY) if (GLY[gid][0]) parts.push(`<path id="g${gid}" d="${GLY[gid][0]}"/>`);
+    for (const gid in GLY) if (GLY[gid][0]) {
+      parts.push(`<path id="g${gid}" d="${GLY[gid][0]}"/>`);
+      if (GLY[gid][5]) parts.push(`<path id="g${gid}a" d="${GLY[gid][5]}"/><path id="g${gid}b" d="${GLY[gid][6]}"/>`); // tanween: two strokes
+    }
     $("#gdefs").innerHTML = `<defs>${parts.join("")}</defs>`;
   }
   function pickCat(colors, idxs) {
@@ -159,6 +164,8 @@
       that mark glyph, never to the letter body; a letter merged by lam-alef belongs to the ligature. */
   const MARK_RE = /[\u064B-\u065F\u0670\u06D6-\u06ED\u0654\u0655\u200F]/;
   const covCache = new Map();
+  const TAN_CH = "\u064B\u064C\u064D\u0657\u065E\u0656\u08F0\u08F1\u08F2", IQ_CH = "\u06E2\u06ED";
+  let HIT = false; // when true, glyphs carry their character index so a tap can find the letter
   function coverage(text, g) {
     let cov = covCache.get(text);
     if (cov) return cov;
@@ -195,8 +202,19 @@
       if (!e || !e[0]) continue;
       if (range && (c < range[0] || c >= range[1])) continue;
       minX = Math.min(minX, x + e[1]); maxX = Math.max(maxX, x + e[3]);
-      const cat = pickCat(colors, cov.get(c));
-      uses += `<use href="#g${gid}" transform="translate(${x} ${-y}) scale(1 -1)"${cat ? ` class="k-${cat}"` : ""}/>`;
+      const idxs = cov.get(c), hit = HIT ? ` data-c="${c}"` : "", tf = `transform="translate(${x} ${-y}) scale(1 -1)"`;
+      if (e[5] && idxs) {
+        // first stroke = the letter's haraka, second = the tanween's noon (or the small meem of iqlab)
+        const iq = idxs.find((j) => IQ_CH.includes(text[j])), tn = idxs.find((j) => TAN_CH.includes(text[j]));
+        let ca = null, cb = null;
+        if (iq != null) { cb = colors && colors[iq]; ca = pickCat(colors, idxs.filter((j) => j !== iq)); }
+        else if (tn != null) { ca = colors && colors[tn]; cb = colors && colors.s2 && colors.s2[tn]; }
+        else ca = cb = pickCat(colors, idxs);
+        uses += `<use href="#g${gid}a" ${tf}${ca ? ` class="k-${ca}"` : ""}${hit}/><use href="#g${gid}b" ${tf}${cb ? ` class="k-${cb}"` : ""}${hit}/>`;
+        continue;
+      }
+      const cat = pickCat(colors, idxs);
+      uses += `<use href="#g${gid}" ${tf}${cat ? ` class="k-${cat}"` : ""}${hit}/>`;
     }
     if (minX > maxX) { minX = 0; maxX = adv || 1; }
     const pad = 20, w = maxX - minX + pad * 2, h = YMAX - YMIN;
@@ -253,8 +271,8 @@
     const lesson = ui.lesson && lessonById(ui.lesson);
     const opts = META.surahs.map((s) => `<option value="${s.n}"${s.n === ui.surah ? " selected" : ""}>${AR(s.n)} · ${esc(s.ar)}</option>`).join("");
     v.innerHTML = `
-      ${lesson ? `<div class="lesson-banner"><h3>الدرس ${AR(LESSONS.indexOf(lesson) + 1)}: ${esc(lesson.title)}</h3><p>${esc(lesson.text)}</p>
-        <div class="row"><button class="btn primary" id="lessonDone">${(LS.get("done", [])).includes(lesson.id) ? "أنهيت هذا الدرس ✓" : "أنهيت الدرس"}</button><button class="btn ghost" id="lessonExit">الخروج من الدرس</button><a class="btn ghost" href="#lessons">كل الدروس</a></div></div>` : ""}
+      ${lesson ? `<div class="lesson-banner"><h3>المرحلة ${AR(LESSONS.indexOf(lesson) + 1)}: ${esc(lesson.title)}</h3><p>${esc(lesson.text)}</p>
+        <div class="row"><button class="btn primary" id="lessonDone">${(LS.get("done", [])).includes(lesson.id) ? "أنهيت هذه المرحلة ✓" : "أنهيت المرحلة"}</button><button class="btn ghost" id="lessonExit">الخروج من المرحلة</button><a class="btn ghost" href="#lessons">كل المراحل</a></div></div>` : ""}
       ${CAN_EDIT && !lesson ? `<div class="lesson-banner"><h3>أدوات الشيخ</h3><p>اضغط رقم الآية ${canRecord() ? "لتسجيل تلاوتها بالكاميرا" : "لإضافة فيديو تلاوتها"}، واضغط أي كلمة لتعديل ألوانها أو تسجيل نطقها.</p></div>` : ""}
       <div class="bar">
         <div class="field"><label for="surahSel">السورة</label><select id="surahSel">${opts}</select></div>
@@ -263,6 +281,7 @@
           <option value="wasl"${mode() === "wasl" ? " selected" : ""}>الوصل</option>
           <option value="marks"${mode() === "marks" ? " selected" : ""}>الوقف عند علامات الوقف</option></select></div>
         <div class="field" aria-label="حجم الخط"><button class="iconbtn" id="fsDown" aria-label="تصغير الخط">−</button><button class="iconbtn" id="fsUp" aria-label="تكبير الخط">+</button></div>
+        ${STATIC ? `<button class="btn" id="stuRec">🎙 سجّل تلاوتك</button><button class="btn" id="pdfBtn">PDF</button>` : ""}
         <div class="field"><label for="gotoAyah">الآية</label><input id="gotoAyah" type="number" min="1" inputmode="numeric" style="width:76px" placeholder="رقم"></div>
       </div>
       <div class="legend" id="legend">${legendHTML()}</div>
@@ -273,13 +292,49 @@
     $("#fsDown", v).onclick = () => setSize(-2);
     $("#fsUp", v).onclick = () => setSize(2);
     $("#gotoAyah", v).onchange = (e) => gotoAyah(+e.target.value);
+    if ($("#stuRec", v)) { $("#stuRec", v).onclick = () => studentRecorder(); $("#pdfBtn", v).onclick = () => printSurah(); }
     if (lesson) {
-      $("#lessonDone", v).onclick = () => { const d = new Set(LS.get("done", [])); d.add(lesson.id); LS.set("done", Array.from(d)); toast("أحسنت! سُجّل الدرس منتهياً."); renderMushaf(); };
+      $("#lessonDone", v).onclick = () => { const d = new Set(LS.get("done", [])); d.add(lesson.id); LS.set("done", Array.from(d)); toast("أحسنت! سُجّلت المرحلة منتهية."); renderMushaf(); };
       $("#lessonExit", v).onclick = () => { ui.lesson = null; LS.set("lesson", null); renderMushaf(); };
     }
     try { CUR = await loadSurah(ui.surah); } catch (e) { $("#page").innerHTML = `<p class="empty">تعذّر تحميل السورة. تحقّق من الاتصال ثم أعد المحاولة.</p>`; return; }
     ui.rendered = 0;
     drawPage();
+  }
+  /** The student records his own recitation while reading; the file stays on his device and can be downloaded. */
+  function studentRecorder() {
+    let bar = $("#srec");
+    if (bar) { bar.remove(); return; }
+    if (!(navigator.mediaDevices && window.MediaRecorder)) { toast("هذا المتصفح لا يدعم التسجيل."); return; }
+    bar = document.createElement("div"); bar.id = "srec"; bar.className = "srec";
+    $("#legend").before(bar);
+    let stream = null, rec = null, chunks = [], t0 = 0, timer = null;
+    const idle = (msg) => { bar.innerHTML = `<button class="btn primary" id="srGo">● ابدأ التسجيل</button><span class="grow">${msg || "اقرأ من المصحف أمامك، ثم استمع إلى تلاوتك أو نزّلها. التسجيل يبقى على جهازك فقط."}</span><button class="iconbtn" id="srX" aria-label="إغلاق">✕</button>`; $("#srGo", bar).onclick = start; $("#srX", bar).onclick = () => { if (stream) stream.getTracks().forEach((t) => t.stop()); bar.remove(); }; };
+    async function start() {
+      try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); }
+      catch (e) { idle("لم يُسمح باستعمال الميكروفون. اسمح به من إعدادات المتصفح ثم أعد المحاولة."); return; }
+      chunks = []; rec = new MediaRecorder(stream);
+      rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+      rec.onstop = () => {
+        clearInterval(timer); stream.getTracks().forEach((t) => t.stop()); stream = null;
+        const type = (rec.mimeType || "audio/webm").split(";")[0], ext = /mp4|aac|m4a/.test(type) ? "m4a" : /ogg/.test(type) ? "ogg" : "webm";
+        const url = URL.createObjectURL(new Blob(chunks, { type }));
+        const name = `تلاوتي-${META.surahs[ui.surah - 1].ar}.${ext}`;
+        bar.innerHTML = `<audio controls src="${url}" style="flex:1;min-width:180px"></audio><a class="btn primary" href="${url}" download="${esc(name)}">⬇ تنزيل</a><button class="btn" id="srAgain">↺ من جديد</button><button class="iconbtn" id="srX" aria-label="إغلاق">✕</button>`;
+        $("#srAgain", bar).onclick = () => idle(); $("#srX", bar).onclick = () => bar.remove();
+      };
+      rec.start(1000); t0 = Date.now();
+      bar.innerHTML = `<button class="btn danger" id="srStop">■ إيقاف</button><span class="rec-timer" id="srT">٠:٠٠</span><span class="grow">جارٍ التسجيل… اقرأ الآن.</span>`;
+      $("#srStop", bar).onclick = () => rec.stop();
+      timer = setInterval(() => { const sec = (Date.now() - t0) / 1000; $("#srT", bar).textContent = mmss(sec); }, 500);
+    }
+    idle();
+  }
+  function printSurah() {
+    if (!CUR) return;
+    if (ui.rendered < CUR.ayahs.length) appendAyahs(CUR.ayahs.length - ui.rendered);
+    toast("اختر «حفظ بصيغة PDF» في نافذة الطباعة.", 5000);
+    setTimeout(() => window.print(), 400);
   }
   function setSize(d) { ui.size = Math.max(20, Math.min(72, ui.size + d)); LS.set("size", ui.size); const p = $("#page"); if (p) p.style.setProperty("--q", ui.size + "px"); }
   function drawPage() {
@@ -592,7 +647,8 @@
         const name = { fatha: "الفتحة", damma: "الضمّة", kasra: "الكسرة", sukun: "السكون", shadda: "الشدّة", tanF: "تنوين الفتح", tanD: "تنوين الضم", tanK: "تنوين الكسر",
           otanF: "تنوين الفتح", otanD: "تنوين الضم", otanK: "تنوين الكسر", iqlab: "ميم الإقلاب", madd: "علامة المدّ", dagger: "الألف الصغيرة", swaw: "الواو الصغيرة",
           sya: "الياء الصغيرة", dot: "نقطة الضبط", dot2: "نقطة الضبط", hamza: "الهمزة", snoon: "النون الصغيرة", zero: "علامة الزيادة" }[m.t];
-        if (name) out.push({ i: m.i, label: name, unit: u });
+        if (name) out.push({ i: m.i, label: /tan/.test(m.t) ? name + " (العلامة الأولى)" : name, unit: u });
+        if (/tan/.test(m.t)) out.push({ i: m.i + "b", label: name + " (العلامة الثانية)", unit: u });
       }
     }
     return out;
@@ -605,7 +661,7 @@
     const auto = T.resolve(an, new Set(ALLCATS.filter((c) => c.on).map((c) => c.id)), PRIORITY, null);
     const slots = slotList(an).map((s) => {
       const has = Object.prototype.hasOwnProperty.call(cur, s.i);
-      const val = has ? cur[s.i] : auto[s.i];
+      const val = has ? cur[s.i] : String(s.i).endsWith("b") ? auto.s2[parseInt(s.i, 10)] : auto[s.i];
       const c = val && CATMAP.get(val);
       return `<button class="slotbtn${has ? " ov" : ""}" data-slot="${s.i}" style="--dot:${c ? `var(--c-${c.id})` : "transparent"}"><span class="dot"></span>${esc(s.label)}: ${c ? esc(c.name) : "بدون لون"}${has ? " ✎" : ""}</button>`;
     }).join("");
@@ -628,7 +684,7 @@
     $$("#scopeSeg button", root).forEach((b) => (b.onclick = () => { SHEET.scope = b.dataset.s; SHEET.draft = null; drawSheet(); }));
     const options = ["__auto"].concat(legendOrder().filter((c) => c.on).map((c) => c.id), [""]);
     $$("[data-slot]", root).forEach((b) => (b.onclick = () => {
-      const i = +b.dataset.slot;
+      const i = b.dataset.slot;
       const d = SHEET.draft || Object.assign({}, STATE.overrides[keyNow()] || {});
       const cur = Object.prototype.hasOwnProperty.call(d, i) ? d[i] : "__auto";
       const nx = options[(options.indexOf(cur) + 1) % options.length];
@@ -962,10 +1018,10 @@
   /* ---------------- lessons ---------------- */
   function renderLessons() {
     const done = new Set(LS.get("done", []));
-    $("#v-lessons").innerHTML = `<h2 class="page-title">مسار الدروس</h2>
-      <p class="lead">تُضاف الألوان درساً بعد درس كما في دورة «الطريق إلى الإتقان»: ابدأ بالساكن الشديد، ثم أضف لوناً جديداً في كل درس حتى تجتمع الألوان كلها.</p>
+    $("#v-lessons").innerHTML = `<h2 class="page-title">مراحل الدرس</h2>
+      <p class="lead">تُضاف الألوان مرحلة بعد مرحلة كما في دورة «الطريق إلى الإتقان»: ابدأ بالساكن الشديد، ثم أضف لوناً جديداً في كل مرحلة حتى تجتمع الألوان كلها.</p>
       <div class="grid">${LESSONS.map((l, i) => `<button class="card${done.has(l.id) ? " done" : ""}" data-lesson="${l.id}" style="text-align:start">
-        <span class="num">الدرس ${AR(i + 1)}${done.has(l.id) ? " · أُنجز ✓" : ""}</span><h3>${esc(l.title)}</h3><p>${esc(l.sub)} · ${esc(l.practice ? "تمرين" : "سورة " + META.surahs[l.s - 1].ar)}</p>
+        <span class="num">المرحلة ${AR(i + 1)}${done.has(l.id) ? " · أُنجز ✓" : ""}</span><h3>${esc(l.title)}</h3><p>${esc(l.sub)} · ${esc(l.practice ? "تمرين" : "سورة " + META.surahs[l.s - 1].ar)}</p>
         <span class="chips">${l.cats.filter((c) => CATMAP.has(c)).map((c) => `<span class="chip small" style="--dot:var(--c-${c})"><span class="dot"></span>${esc(CATMAP.get(c).name)}</span>`).join("")}</span></button>`).join("")}</div>`;
     $$("[data-lesson]").forEach((b) => (b.onclick = () => {
       const l = lessonById(b.dataset.lesson);
@@ -976,8 +1032,90 @@
     }));
   }
 
-  /* ---------------- practice table ---------------- */
-  function resetExercise() { P.picked = null; P.placed = {}; P.checked = false; }
+  /* ---------------- practice: tables and the colouring drill ---------------- */
+  function resetExercise() { P.picked = null; P.placed = {}; P.checked = false; P.paint = []; P.solved = false; }
+  const KINDS = [["time", "أزمنة الحروف"], ["nun", "النون الساكنة والتنوين والميم"], ["paint", "التلوين"]];
+  const kindSeg = () => `<div class="seg" id="pKind" style="margin-bottom:10px;flex-wrap:wrap">${KINDS.map(([k, l]) => `<button data-k="${k}" aria-pressed="${(P.kind || "time") === k}">${l}</button>`).join("")}</div>`;
+  function bindKindSeg(v) { $$("#pKind button", v).forEach((b) => (b.onclick = () => { P.kind = b.dataset.k; resetExercise(); renderPractice(); })); }
+  /** Where a brush puts its colour on one letter: time colours on the sukun or shadda (or the shape), navy on the
+      harakat, ghunna on the tanween's second stroke / small meem / shadda / shape, takhlis on the shape. */
+  function brushTargets(u, cat) {
+    if (cat === "harakat") return [u.vowelMark, u.tanMark].filter(Boolean).map((m) => ({ i: m.i }));
+    if (cat === "takhlis") return [{ i: u.b }];
+    if (cat === "ghunna") return u.tanMark ? [{ i: u.tanMark.i, s2: true }] : u.iqlab ? [{ i: u.iqlab.i }] : u.shadda ? [{ i: u.shadda.i }] : [{ i: u.b }];
+    const signs = [u.sukun, u.shadda].filter(Boolean).map((m) => ({ i: m.i }));
+    return signs.length ? signs : u.tanMark ? [{ i: u.tanMark.i, s2: true }] : [{ i: u.b }];
+  }
+  function renderPaint(v, S) {
+    const ay = S.ayahs[P.ai], an = analyze(S, P.ai);
+    const brushes = CORE.map((id) => CATMAP.get(id)).filter(Boolean);
+    if (!P.brush || !CATMAP.has(P.brush)) P.brush = brushes[0].id;
+    P.paint = P.paint || [];
+    const coreSet = new Set(CORE);
+    const words = ay.w.map((wd, wi) => ({ wd, wi })).filter((x) => !x.wd[3]);
+    // expected: letter × colour
+    const expected = new Set();
+    for (const { wd, wi } of words) {
+      const res = T.resolve(an[wi], coreSet, PRIORITY, ovFor(S.n, ay.a, wi, wd[0]));
+      an[wi].units.forEach((u, k) => {
+        for (const i of [u.b].concat(u.marks.map((m) => m.i))) { if (coreSet.has(res[i])) expected.add(`${wi}:${k}:${res[i]}`); if (coreSet.has(res.s2[i])) expected.add(`${wi}:${k}:${res.s2[i]}`); }
+      });
+    }
+    const mine = new Set(P.paint);
+    const colorsOf = (wi) => {
+      const w = an[wi], c = w.chars.map(() => null); c.s2 = w.chars.map(() => null);
+      for (const key of P.paint) { const [a, k, cat] = key.split(":"); if (+a !== wi) continue; for (const t of brushTargets(w.units[+k], cat)) (t.s2 ? c.s2 : c)[t.i] = cat; }
+      return c;
+    };
+    HIT = true;
+    const line = words.map(({ wd, wi }) => `<span class="w paintw" data-wi="${wi}">${wordSVG(wd, P.solved ? T.resolve(an[wi], coreSet, PRIORITY, ovFor(S.n, ay.a, wi, wd[0])) : colorsOf(wi))}</span>`).join(" ") + ` <span class="ae">${wordSVG(ay.e, null)}</span>`;
+    HIT = false;
+    let result = "";
+    if (P.checked) {
+      let right = 0, extra = 0;
+      for (const k of mine) expected.has(k) ? right++ : extra++;
+      const missing = expected.size - right;
+      const per = brushes.map((b) => { const need = [...expected].filter((k) => k.endsWith(":" + b.id)).length, got = [...mine].filter((k) => k.endsWith(":" + b.id) && expected.has(k)).length; return need ? `<span class="chip small" style="--dot:var(--c-${b.id})"><span class="dot"></span>${esc(b.name)} ${AR(got)}/${AR(need)}</span>` : ""; }).join("");
+      const sc = LS.get("scores", {}); sc[`paint:${S.n}:${ay.a}`] = { right, total: expected.size, extra, at: Date.now() }; LS.set("scores", sc);
+      result = `<div class="result"><b>${missing === 0 && extra === 0 ? "أحسنت! التلوين صحيح كله." : `الصحيح ${AR(right)} من ${AR(expected.size)}${extra ? `، وزائد في غير موضعه ${AR(extra)}` : ""}${missing ? `، وبقي ${AR(missing)}` : ""}.`}</b><div class="missing" style="margin-top:6px">${per}</div></div>`;
+    }
+    const opts = META.surahs.map((s) => `<option value="${s.n}"${s.n === P.surah ? " selected" : ""}>${AR(s.n)} · ${esc(s.ar)}</option>`).join("");
+    const aopts = S.ayahs.map((a, i) => `<option value="${i}"${i === P.ai ? " selected" : ""}>${AR(a.a)}</option>`).join("");
+    v.innerHTML = `<h2 class="page-title">التمارين</h2>${kindSeg()}
+      <p class="lead">اختر لوناً ثم اضغط على الحرف. يضع القلم كل لون في موضعه: ألوان الساكن على السكون أو الشدّة، والأزرق الغامق على الحركة، والوردي على العلامة الثانية للتنوين أو الميم الصغيرة أو الشدّة، والبرتقالي على الحرف. اضغط مرة ثانية لإزالة اللون.</p>
+      <div class="bar">
+        <div class="field"><label for="pS">السورة</label><select id="pS">${opts}</select></div>
+        <div class="field"><label for="pA">الآية</label><select id="pA">${aopts}</select></div>
+        <button class="iconbtn" id="pPrev" aria-label="الآية السابقة">›</button><button class="iconbtn" id="pNext" aria-label="الآية التالية">‹</button>
+      </div>
+      <div class="legend" style="position:static">${brushes.map((b) => `<button class="chip brush${P.brush === b.id ? " on" : ""}" data-brush="${b.id}" style="--dot:var(--c-${b.id})"><span class="dot"></span>${esc(b.name)}</button>`).join("")}<button class="chip brush${P.brush === "__erase" ? " on" : ""}" data-brush="__erase" style="--dot:transparent"><span class="dot"></span>ممحاة</button></div>
+      <div class="ayah-show paint" id="pAyah">${line}</div>
+      <div class="bar"><button class="btn primary" id="ptCheck">تحقّق</button><button class="btn" id="ptSolve">${P.solved ? "عُد إلى تلويني" : "اعرض الحل"}</button><button class="btn" id="ptClear">امسح الكل</button></div>
+      ${result}`;
+    bindKindSeg(v);
+    $("#pS", v).onchange = (e) => { P.surah = +e.target.value; P.ai = 0; resetExercise(); renderPractice(); };
+    $("#pA", v).onchange = (e) => { P.ai = +e.target.value; resetExercise(); renderPractice(); };
+    $("#pPrev", v).onclick = () => { if (P.ai > 0) { P.ai--; resetExercise(); renderPractice(); } };
+    $("#pNext", v).onclick = () => { if (P.ai < S.ayahs.length - 1) { P.ai++; resetExercise(); renderPractice(); } };
+    $$("[data-brush]", v).forEach((b) => (b.onclick = () => { P.brush = b.dataset.brush; renderPractice(); }));
+    $("#pAyah", v).onclick = (e) => {
+      if (P.solved) return;
+      const use = e.target.closest("use[data-c]"), wEl = e.target.closest(".paintw");
+      if (!wEl) return;
+      const wi = +wEl.dataset.wi, w = an[wi];
+      let k = 0;
+      if (use) { const c = +use.dataset.c; w.units.forEach((u, j) => { if (u.b <= c) k = j; }); }
+      else return;
+      const role = w.units[k].role;
+      if (role === "wasl" || role === "silentWasl") { toast("همزة الوصل لا تُلوَّن."); return; }
+      if (P.brush === "__erase") P.paint = P.paint.filter((x) => !x.startsWith(`${wi}:${k}:`));
+      else { const key = `${wi}:${k}:${P.brush}`; P.paint = P.paint.includes(key) ? P.paint.filter((x) => x !== key) : P.paint.concat(key); }
+      P.checked = false; renderPractice();
+    };
+    $("#ptCheck", v).onclick = () => { P.checked = true; P.solved = false; renderPractice(); };
+    $("#ptSolve", v).onclick = () => { P.solved = !P.solved; renderPractice(); };
+    $("#ptClear", v).onclick = () => { P.paint = []; P.checked = false; P.solved = false; renderPractice(); };
+  }
   async function renderPractice() {
     const v = $("#v-practice");
     let S;
@@ -985,7 +1123,9 @@
     if (P.ai >= S.ayahs.length) P.ai = 0;
     const ay = S.ayahs[P.ai];
     const an = analyze(S, P.ai);
-    const cols = tableCols();
+    if (P.kind === "paint") return renderPaint(v, S);
+    const nunKind = P.kind === "nun";
+    const cols = nunKind ? T.NUN_RULES.map((r) => ({ id: r.id, name: r.name, cat: r.cat, vis: ["ghunna", "bayni", "idgham"] })) : tableCols();
     const opts = META.surahs.map((s) => `<option value="${s.n}"${s.n === P.surah ? " selected" : ""}>${AR(s.n)} · ${esc(s.ar)}</option>`).join("");
     const aopts = S.ayahs.map((a, i) => `<option value="${i}"${i === P.ai ? " selected" : ""}>${AR(a.a)}</option>`).join("");
     const words = ay.w.map((wd, wi) => ({ wd, wi })).filter((x) => !x.wd[3]);
@@ -993,11 +1133,12 @@
     for (const c of cols) {
       answer[c.id] = new Set();
       for (const { wd, wi } of words) {
+        if (nunKind) { if (an[wi].rules.some((r) => r.rule === c.id)) answer[c.id].add(wi); continue; }
         const res = T.resolve(an[wi], new Set([c.id]), PRIORITY, ovFor(S.n, ay.a, wi, wd[0]));
-        if (res.some((x) => x === c.id)) answer[c.id].add(wi);
+        if (res.some((x) => x === c.id) || res.s2.some((x) => x === c.id)) answer[c.id].add(wi);
       }
     }
-    const vis = new Set(cols.map((c) => c.id));
+    const vis = new Set(nunKind ? ["ghunna", "bayni", "idgham"] : cols.map((c) => c.id));
     const ayahLine = words.map(({ wd, wi }) => {
       const colors = P.mode === "show" ? colorsFor(an[wi], vis, ovFor(S.n, ay.a, wi, wd[0])) : null;
       return `<button class="w" data-pw="${wi}" aria-label="${esc(plain(wd[0]))}">${wordSVG(wd, colors)}</button>`;
@@ -1007,7 +1148,7 @@
       const maxRows = Math.max(1, ...cols.map((c) => answer[c.id].size));
       body = `<tr>${cols.map((c) => `<td><div class="cell">${Array.from(answer[c.id]).map((wi) => {
         const wd = ay.w[wi];
-        return `<button class="w" data-tw="${wi}" aria-label="${esc(plain(wd[0]))}">${wordSVG(wd, colorsFor(an[wi], new Set([c.id]), ovFor(S.n, ay.a, wi, wd[0])))}</button>`;
+        return `<button class="w" data-tw="${wi}" aria-label="${esc(plain(wd[0]))}">${wordSVG(wd, colorsFor(an[wi], new Set(c.vis || [c.id]), ovFor(S.n, ay.a, wi, wd[0])))}</button>`;
       }).join("") || `<span class="role" style="font-size:13px;color:var(--muted)">—</span>`}</div></td>`).join("")}</tr>`;
       void maxRows;
     } else {
@@ -1016,7 +1157,7 @@
         return `<td class="target" data-col="${c.id}"><div class="cell">${Array.from(set).map((wi) => {
           const wd = ay.w[wi];
           const ok = answer[c.id].has(wi);
-          return `<span class="w placed${P.checked ? (ok ? " right" : " wrong") : ""}" data-unplace="${c.id}:${wi}">${wordSVG(wd, P.checked ? colorsFor(an[wi], new Set([c.id]), ovFor(S.n, ay.a, wi, wd[0])) : null)}</span>`;
+          return `<span class="w placed${P.checked ? (ok ? " right" : " wrong") : ""}" data-unplace="${c.id}:${wi}">${wordSVG(wd, P.checked ? colorsFor(an[wi], new Set(c.vis || [c.id]), ovFor(S.n, ay.a, wi, wd[0])) : null)}</span>`;
         }).join("")}</div></td>`;
       }).join("")}</tr>`;
     }
@@ -1032,10 +1173,11 @@
       }
       const sc = LS.get("scores", {}); sc[`${S.n}:${ay.a}`] = { right, total, wrong, at: Date.now() }; LS.set("scores", sc);
       result = `<div class="result"><b>النتيجة: ${AR(right)} من ${AR(total)} صحيحة${wrong ? `، و${AR(wrong)} في غير موضعها` : ""}.</b>
-        ${missing.length ? `<div class="missing">لم تضعها بعد: ${missing.map(({ c, wi }) => `<span class="chip small" style="--dot:var(--c-${c.id})"><span class="dot"></span>${esc(plain(ay.w[wi][0]))} ← ${esc(c.name)}</span>`).join("")}</div>` : `<div>أحسنت، أكملت الجدول.</div>`}</div>`;
+        ${missing.length ? `<div class="missing">لم تضعها بعد: ${missing.map(({ c, wi }) => `<span class="chip small" style="--dot:var(--c-${c.cat || c.id})"><span class="dot"></span>${esc(plain(ay.w[wi][0]))} ← ${esc(c.name)}</span>`).join("")}</div>` : `<div>أحسنت، أكملت الجدول.</div>`}</div>`;
     }
-    v.innerHTML = `<h2 class="page-title">جدول التدريب</h2>
-      <p class="lead">كل كلمة تظهر في عمود كل حكم فيها، ملوّنةً بذلك الحكم وحده. في وضع «تمرين» اختر كلمة ثم اضغط على العمود المناسب.</p>
+    v.innerHTML = `<h2 class="page-title">التمارين</h2>
+      ${kindSeg()}
+      <p class="lead">${nunKind ? "جدول أحكام النون الساكنة والتنوين والميم الساكنة: ضع كل كلمة في عمود حكمها. القراءة موصولة عبر رؤوس الآي، والنون والميم المشدّدتان لا تُسألان." : "كل كلمة تظهر في عمود كل حكم فيها، ملوّنةً بذلك الحكم وحده. في وضع «تمرين» اختر كلمة ثم اضغط على العمود المناسب."}</p>
       <div class="bar">
         <div class="field"><label for="pS">السورة</label><select id="pS">${opts}</select></div>
         <div class="field"><label for="pA">الآية</label><select id="pA">${aopts}</select></div>
@@ -1045,7 +1187,8 @@
       <div class="ayah-show ${P.mode === "exercise" ? "pool" : ""}" id="pAyah">${ayahLine}</div>
       ${P.mode === "exercise" ? `<div class="bar"><button class="btn primary" id="pCheck">تحقّق</button><button class="btn" id="pClear">إفراغ الجدول</button><span style="font-size:13px;color:var(--muted)">${P.picked != null ? "اختر العمود لهذه الكلمة" : "اختر كلمة من الآية"}</span></div>` : ""}
       ${result}
-      <div class="ptable-wrap"><table class="ptable"><thead><tr>${cols.map((c) => `<th style="--hc:var(--c-${c.id})">${esc(c.name)}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table></div>`;
+      <div class="ptable-wrap"><table class="ptable"><thead><tr>${cols.map((c) => `<th style="--hc:var(--c-${c.cat || c.id})">${esc(c.name)}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table></div>`;
+    bindKindSeg(v);
     $("#pS", v).onchange = (e) => { P.surah = +e.target.value; P.ai = 0; resetExercise(); renderPractice(); };
     $("#pA", v).onchange = (e) => { P.ai = +e.target.value; resetExercise(); renderPractice(); };
     $$("#pMode button", v).forEach((b) => (b.onclick = () => { P.mode = b.dataset.m; resetExercise(); renderPractice(); }));
@@ -1183,16 +1326,16 @@
     body.innerHTML = `<div class="kv">
       <label for="rMode">طريقة القراءة الافتراضية</label><select id="rMode"><option value="waqf">الوقف على رؤوس الآي</option><option value="wasl">الوصل</option><option value="marks">الوقف عند علامات الوقف</option></select>
       <label for="rFinal">الحركة الأخيرة عند الوقف</label><select id="rFinal"><option value="keep">تبقى بلون إتمام الحركات</option><option value="sakin">تأخذ لون الساكن</option><option value="hide">تُخفى</option></select>
-      <label for="rTan">التنوين والإقلاب عند الوقف</label><select id="rTan"><option value="harakat">بلا غنّة (لون الحركة)</option><option value="keep">يبقى بلون الغنّة</option></select>
+      <label for="rLive">رابط الحصة المباشرة (Google Meet أو Zoom أو Jitsi)</label><input type="text" id="rLive" dir="ltr" placeholder="https://meet.google.com/…" value="${esc(st.liveUrl || "")}">
       <label for="rShadid">الحروف الشديدة</label><input type="text" id="rShadid" value="${esc(cl.shadid)}">
       <label for="rBayni">الحروف البينية</label><input type="text" id="rBayni" value="${esc(cl.bayni)}">
       <label for="rTakh">حروف التخليص (الاستعلاء)</label><input type="text" id="rTakh" value="${esc(cl.takhlis)}">
       </div><p style="font-size:13px;color:var(--muted)">باقي الحروف تُعدّ رخوة. الراء ولام لفظ الجلالة تُفخّمان تلقائياً بحسب ما قبلهما.</p>`;
     $("#rMode", body).value = st.mode || "waqf";
     $("#rFinal", body).value = st.finalHaraka || "keep";
-    $("#rTan", body).value = st.tanweenAtWaqf || "harakat";
     const upd = () => {
-      STATE.settings = Object.assign({}, STATE.settings, { mode: $("#rMode", body).value, finalHaraka: $("#rFinal", body).value, tanweenAtWaqf: $("#rTan", body).value });
+      STATE.settings = Object.assign({}, STATE.settings, { mode: $("#rMode", body).value, finalHaraka: $("#rFinal", body).value, liveUrl: $("#rLive", body).value.trim() });
+      refreshCats();
       STATE.classes = { shadid: $("#rShadid", body).value.trim(), bayni: $("#rBayni", body).value.trim(), takhlis: $("#rTakh", body).value.trim() };
       anVersion++; anCache.clear(); BASMALA_AN = null; markDirty();
     };

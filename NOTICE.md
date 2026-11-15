@@ -2,7 +2,7 @@
 
 ## Quran text and font — King Fahd Glorious Qur'an Printing Complex (KFGQPC)
 
-`third_party/kfgqpc/qaloon/` contains the KFGQPC Uthmanic Qaloon font (version 10) and its Quran text data, obtained from https://github.com/thetruetruth/quran-data-kfgqpc. The glyph outlines in `site/data/glyphs.json` are drawn from that font without modification.
+`third_party/kfgqpc/qaloon/` contains the KFGQPC Qaloon Quran text data (and its font, version 10), and `third_party/kfgqpc/doori/` the KFGQPC Douri Uthmanic font (version 9) that the sheikh chose for drawing the text, both obtained from https://github.com/thetruetruth/quran-data-kfgqpc. The glyph outlines in `site/data/glyphs.json` are drawn from the Douri font without modification; each tanween is drawn as its two strokes so they can be coloured apart.
 
 KFGQPC states that its fonts are available for copying, distribution and use free of charge in personal, commercial and all individual fields, on condition that the font is not attributed to anyone other than its owner, that no one reprograms or modifies its structures or components, and that it is not sold. The Complex keeps all rights to the font and to reproducing its letters. Source: https://fonts.qurancomplex.gov.sa
 

@@ -39,14 +39,14 @@
     { id: "zaid", name: "حرف زائد لا يُنطق", color: "#BDC3C7", dark: "#5D6D7E", on: false, short: "حرف يُكتب ولا يُنطق، مثل الألف بعد واو الجماعة." },
   ];
 
-  const DEFAULT_ORDER = ["ghunna", "idgham", "shadid", "bayni", "rikhw", "takhlis", "harakat", "wasl", "tashil", "ikhtilas",
+  // On a letter's shape: ghunna first, then takhlis, then the time colour (it reaches the shape only at a stop).
+  const DEFAULT_ORDER = ["ghunna", "idgham", "takhlis", "shadid", "bayni", "rikhw", "harakat", "wasl", "tashil", "ikhtilas",
     "madd_lazim", "madd_muttasil", "madd_munfasil", "madd_arid", "madd_tabii", "madd_sila", "ghunna_naqisa", "ghunna_anqas",
     "lam_shamsiya", "zaid"];
 
   const SETTINGS = {
     mode: "waqf",            // waqf: وقف على رؤوس الآي | wasl | marks: وقف عند علامات الوقف
     finalHaraka: "keep",     // keep (إتمام الحركات) | sakin (لون الساكن) | hide
-    tanweenAtWaqf: "harakat", // harakat: no ghunna at a stop (default) | keep: keep the ghunna colour
     classes: { shadid: "ءأإؤئجدقطبكت", bayni: "لنعمر", takhlis: "خصضغطقظ" },
   };
 
@@ -61,6 +61,13 @@
   };
   const VOW = { fatha: "a", damma: "u", kasra: "i", tanF: "a", tanD: "u", tanK: "i", otanF: "a", otanD: "u", otanK: "i" };
   const IKHFA = "تثجدذزسشصضطظفقك";
+  const IZHAR = "ءهعحغخ";
+  const NUN_RULES = [
+    { id: "izhar", name: "الإظهار", cat: "bayni" }, { id: "idgham_ghunna", name: "الإدغام بغنّة", cat: "ghunna" },
+    { id: "idgham_bila", name: "الإدغام بلا غنّة", cat: "idgham" }, { id: "iqlab", name: "القلب", cat: "ghunna" },
+    { id: "ikhfa", name: "الإخفاء", cat: "ghunna" }, { id: "m_idgham", name: "إدغام الميم", cat: "ghunna" },
+    { id: "m_ikhfa", name: "إخفاء الميم", cat: "ghunna" }, { id: "m_izhar", name: "إظهار الميم", cat: "bayni" },
+  ];
   const LETTER_NAME = { "ء": "الهمزة", "ب": "الباء", "ت": "التاء", "ث": "الثاء", "ج": "الجيم", "ح": "الحاء", "خ": "الخاء", "د": "الدال",
     "ذ": "الذال", "ر": "الراء", "ز": "الزاي", "س": "السين", "ش": "الشين", "ص": "الصاد", "ض": "الضاد", "ط": "الطاء", "ظ": "الظاء",
     "ع": "العين", "غ": "الغين", "ف": "الفاء", "ق": "القاف", "ك": "الكاف", "ل": "اللام", "م": "الميم", "ن": "النون", "ه": "الهاء",
@@ -165,7 +172,7 @@
     ctx = ctx || {};
     const S = Object.assign({}, SETTINGS, ctx.settings || {});
     const W = words.map((t) => wordRoles(parseWord(t)));
-    W.forEach((w) => (w.cand = w.chars.map(() => [])));
+    W.forEach((w) => { w.cand = w.chars.map(() => []); w.cand2 = w.chars.map(() => []); w.rules = []; });
     const mode = S.mode;
     const n = W.length;
     // stops: word index after which the reader pauses
@@ -174,14 +181,43 @@
       if (mode === "marks") return W[wi].units.some((u) => u.waqf);
       return false;
     };
-    const startsAt = (wi) => (wi === 0 ? mode !== "wasl" || ctx.startHere === true || !ctx.prevWord : stopAfter(wi - 1));
     const extPrev = ctx.prevWord ? wordRoles(parseWord(ctx.prevWord)) : null;
+    // an ayah that ends with a tanween is read on into the next one, so the next ayah is not a fresh start
+    const prevReadsOn = !!(extPrev && extPrev.units.length && (() => { const u = extPrev.units[extPrev.units.length - 1]; return u.tanMark || u.role === "tanAlif" || (u.iqlab && u.vowel); })());
+    const startsAt = (wi) => (wi === 0 ? !prevReadsOn && (mode !== "wasl" || ctx.startHere === true || !ctx.prevWord) : stopAfter(wi - 1));
     const extNext = ctx.nextWord ? wordRoles(parseWord(ctx.nextWord)) : null;
 
     const add = (w, i, cat, why) => { if (i != null && w.cand[i]) w.cand[i].push({ cat, why }); };
     // the visible body of a letter: the base glyph, plus the hamza drawn as a mark on a tatweel
     const addBody = (w, u, cat, why) => { add(w, u.b, cat, why); const h = u.marks.find((m) => m.t === "hamza"); if (h) add(w, h.i, cat, why); };
     const addMark = (w, m, cat, why) => m && add(w, m.i, cat, why);
+    // the second stroke of a tanween (its noon) is coloured apart from the first (the letter's haraka)
+    const add2 = (w, i, cat, why) => { if (i != null && w.cand2[i]) w.cand2[i].push({ cat, why }); };
+    // what is read right after unit k, reading on across words and across the end of the ayah
+    function readOn(wi, k) {
+      const w = W[wi];
+      for (let kk = k + 1; kk < w.units.length; kk++) { const u = w.units[kk]; if (u.role !== "zaid" && u.role !== "kashida") return { u, sameWord: true }; }
+      const nw = wi + 1 < n ? W[wi + 1] : extNext;
+      if (!nw) return null;
+      const pause = wi < n - 1 && w.units.some((u) => u.waqf);
+      for (const u of nw.units) {
+        if (u.role === "wasl") return { wasl: true, pause };
+        if (u.role !== "zaid" && u.role !== "kashida") return { u, sameWord: false, pause };
+      }
+      return null;
+    }
+    function nunRule(nx) {
+      if (!nx) return null;
+      if (nx.wasl) return "wasl";
+      const N = nx.u.L;
+      if (nx.sameWord && "يو".includes(N)) return "izhar";
+      if (IZHAR.includes(N)) return "izhar";
+      if ("ينمو".includes(N)) return "idgham_ghunna";
+      if ("لر".includes(N)) return "idgham_bila";
+      if (N === "ب") return "iqlab";
+      return "ikhfa";
+    }
+    const tag = (w, k, i, kind, rule) => { if (rule && rule !== "wasl") w.rules.push({ k, i, kind, rule }); };
 
     // next pronounced unit after (wi,k), crossing into the next word only when reading continues
     function nextUnit(wi, k) {
@@ -232,7 +268,9 @@
       let waqfK = -1;
       if (stopHere && lastK >= 0) {
         const u = U[lastK];
-        if (u.role === "tanAlif" || u.role === "madd") { waqfK = -2; }
+        const tanFinal = (u.tanMark || u.role === "tanAlif" || (u.iqlab && u.vowel)) && !!readOn(wi, lastK); // read on into the next ayah
+        if (u.role === "madd" || tanFinal || (u.role === "tanAlif")) { waqfK = -2; }
+        else if (u.L === "ر" && u.vowel === "i" && !u.shadda && !u.tanMark) { waqfK = -2; } // final ر with a kasra keeps it
         else if (u.role === "letter") waqfK = lastK;
       }
 
@@ -249,15 +287,26 @@
         const prevInfo = () => vowelBefore(wi, k);
 
         // ---- sukun ----
+        const sakinNM = isNM && u.role === "letter" && !u.vowel && !u.shadda;
+        let nmRule = null, nmNext = null;
+        if (sakinNM) {
+          nmNext = readOn(wi, k);
+          if (L === "ن") nmRule = nunRule(nmNext);
+          else if (nmNext && !nmNext.wasl) nmRule = nmNext.u.L === "ب" ? "m_ikhfa" : nmNext.u.L === "م" ? "m_idgham" : "m_izhar";
+          tag(w, k, u.b, L === "ن" ? "n" : "m", nmRule);
+        }
+        const nmLive = sakinNM && nmNext && !nmNext.wasl && !nmNext.pause && k !== waqfK;
         if (u.sukun && u.role !== "madd") {
-          if (isNM) add(w, u.b, "ghunna_naqisa", `غنّة ناقصة في ${name} الساكنة المظهرة`);
-          add(w, u.sukun.i, cls, `سكون على ${name}: ${CLASS_WHY[cls]}`);
+          const merged = nmLive && L === "ن" && nmRule === "idgham_ghunna";
+          if (isNM && !merged) add(w, u.b, "ghunna_naqisa", `غنّة ناقصة في ${name} الساكنة المظهرة`);
+          if (merged) add(w, u.b, "ghunna", "نون ساكنة مدغمة بغنّة في ما بعدها");
+          else add(w, u.sukun.i, cls, `سكون على ${name}: ${CLASS_WHY[cls]}`);
         }
         // ---- shadda ----
         if (u.shadda) {
           if (isNM) add(w, u.shadda.i, "ghunna", `${name} مشدّدة: غنّة كاملة`);
-          else if ((L === "ي" || L === "و") && precededByHiddenNun(wi, k)) add(w, u.shadda.i, "ghunna", `إدغام بغنّة في ${name}`);
-          add(w, u.shadda.i, cls, `شدّة على ${name}: ${CLASS_WHY[cls]}`);
+          // a shadda on ي / و / ل / ر that only marks a merged noon is not the letter's own: the noon carries the colour
+          if (!((L === "ي" || L === "و") && precededByHiddenNun(wi, k))) add(w, u.shadda.i, cls, `شدّة على ${name}: ${CLASS_WHY[cls]}`);
         }
         // ---- vowels and tanween ----
         if (u.vowelMark && u.role !== "wasl") {
@@ -267,34 +316,37 @@
           add(w, u.vowelMark.i, "harakat", "إتمام الحركة: لا تُنقص ولا تُختلس");
           if (isNM && !u.shadda) add(w, u.b, "ghunna_anqas", `غنّة أنقص في ${name} المتحرّكة`);
         }
-        const tanUnits = u.tanMark || u.role === "tanAlif" ? [{ host: u }] : [];
-        for (const { host } of tanUnits) {
-          const m = host.tanMark;
-          const open = m && m.t.startsWith("o");
-          const nx = nextUnit(wi, k);
-          const atStop = stopHere && (k >= lastK - 1);
+        if (u.tanMark || u.role === "tanAlif" || (u.iqlab && (u.vowel || u.role === "tanAlif"))) {
+          const m = u.tanMark, nx = readOn(wi, k), rule = nunRule(nx);
+          const live = nx && !nx.wasl && !nx.pause;
+          tag(w, k, m ? m.i : u.iqlab ? u.iqlab.i : u.b, "t", u.iqlab ? "iqlab" : rule);
           if (m) {
-            if (open && !(nx && (nx.u.L === "ل" || nx.u.L === "ر"))) {
-              if (!(atStop && S.tanweenAtWaqf === "harakat")) add(w, m.i, "ghunna", atStop ? "تنوين يُخفى أو يُدغم بغنّة عند الوصل" : nx && "يو".includes(nx.u.L) ? "تنوين مدغم بغنّة" : nx && nx.u.L === "م" ? "تنوين مدغم في الميم بغنّة" : nx && nx.u.L === "ن" ? "تنوين مدغم في النون بغنّة" : "إخفاء التنوين بغنّة");
+            add(w, m.i, "harakat", "العلامة الأولى من التنوين: حركة الحرف، تُتمّ");
+            if (live) {
+              const N = nx.u.L;
+              if (rule === "ikhfa") add2(w, m.i, "ghunna", "العلامة الثانية: نون التنوين مخفاة بغنّة");
+              else if (rule === "iqlab") add2(w, m.i, "ghunna", "العلامة الثانية: نون التنوين تُقلب ميماً بغنّة");
+              else if (rule === "idgham_ghunna" && !("نم".includes(N) && nx.u.shadda)) add2(w, m.i, "ghunna", "العلامة الثانية: نون التنوين مدغمة بغنّة");
+              else if (rule === "izhar") add2(w, m.i, "bayni", "العلامة الثانية: نون التنوين مظهرة، وهي ساكنة بينيّة");
             }
-            add(w, m.i, "harakat", open ? "حركة التنوين" : "تنوين مظهر: إتمام الحركة");
           }
-          if (host.iqlab && !(atStop && S.tanweenAtWaqf === "harakat")) add(w, host.iqlab.i, "ghunna", "إقلاب: التنوين يُقلب ميماً مخفاة بغنّة");
-          if (host.vowelMark && host.role === "tanAlif") add(w, host.vowelMark.i, "harakat", "إتمام الحركة");
+          if (u.vowelMark && u.role === "tanAlif") add(w, u.vowelMark.i, "harakat", "إتمام الحركة");
         }
-        if (u.iqlab && u.role !== "tanAlif" && !(stopHere && k >= lastK - 1 && S.tanweenAtWaqf === "harakat")) add(w, u.iqlab.i, "ghunna", "إقلاب: يُقلب ميماً مخفاة بغنّة");
+        if (u.iqlab && !(sakinNM && nmNext && nmNext.pause)) add(w, u.iqlab.i, "ghunna", "إقلاب: الميم الصغيرة تدلّ على قلب النون ميماً مخفاة بغنّة");
         u.marks.forEach((m) => { if (m.t === "snoon") add(w, m.i, "ghunna", "نون صغيرة مخفاة بغنّة"); });
 
-        // ---- bare nun / meem (hidden or merged) ----
+        // ---- sakin nun / meem written with no sign (hidden or merged) ----
         if (u.role === "letter" && u.bare && isNM && k !== waqfK) {
-          const nx = nextUnit(wi, k);
-          if (nx) {
+          if (nmLive) {
+            const N = nmNext.u.L;
             if (L === "ن") {
-              if (nx.u.shadda) { add(w, u.b, "idgham", `نون مدغمة في ${LETTER_NAME[nx.u.L] || nx.u.L} فلا تُنطق`); }
-              else if (IKHFA.includes(nx.u.L) || nx.u.L === "ب" || "يو".includes(nx.u.L)) add(w, u.b, "ghunna", nx.u.L === "ب" ? "إقلاب النون ميماً بغنّة" : "إخفاء النون بغنّة");
+              if (nmRule === "idgham_bila" || (nmRule === "idgham_ghunna" && "نم".includes(N) && nmNext.u.shadda)) add(w, u.b, "idgham", `نون مدغمة في ${LETTER_NAME[N] || N}: الغنّة على شدّة ما بعدها`);
+              else if (nmRule === "idgham_ghunna") add(w, u.b, "ghunna", "نون ساكنة مدغمة بغنّة");
+              else if (nmRule === "ikhfa") add(w, u.b, "ghunna", "إخفاء النون بغنّة");
+              else if (nmRule === "iqlab") add(w, u.b, "ghunna", "إقلاب النون ميماً بغنّة");
             } else {
-              if (nx.u.L === "ب") add(w, u.b, "ghunna", "إخفاء الميم عند الباء بغنّة");
-              else if (nx.u.L === "م" && nx.u.shadda) add(w, u.b, "idgham", "ميم مدغمة في الميم بعدها");
+              if (nmRule === "m_ikhfa") add(w, u.b, "ghunna", "إخفاء الميم عند الباء بغنّة");
+              else if (nmRule === "m_idgham") add(w, u.b, "idgham", "ميم مدغمة في الميم بعدها: الغنّة على شدّتها");
             }
           }
         } else if (u.role === "letter" && u.bare && k !== waqfK && !isNM) {
@@ -306,7 +358,6 @@
         if (k === waqfK) {
           addBody(w, u, cls, `الوقف يُسكّن ${L === "ة" ? "التاء المربوطة هاءً" : name}: ${CLASS_WHY[cls]}`);
           if (u.shadda) add(w, u.shadda.i, cls, `شدّة عند الوقف: ${CLASS_WHY[cls]}`);
-          if (u.tanMark && S.finalHaraka === "hide") add(w, u.tanMark.i, "__hide", "لا يُنطق التنوين عند الوقف");
         }
 
         // ---- takhlis: heavy letters, ra, lafz al-jalala ----
@@ -332,6 +383,12 @@
           } else if (stopHere && (k === lastK - 1 || (k === lastK - 2 && U[lastK - 1] && U[lastK - 1].role === "zaid"))) { cat = "madd_arid"; why = "مدّ عارض للسكون بسبب الوقف"; }
           if (u.role === "madd") add(w, u.b, cat, why);
           if (target) add(w, target.i, cat, why);
+          // the madd alif follows the letter before it: heavy after a heavy letter
+          const host = u.role === "madd" ? U[k - 1] : u;
+          if (host && (u.L === "ا" || u.L === "ى" || (u.dagger && u.role !== "madd")) && w.cand[host.b].some((c) => c.cat === "takhlis")) {
+            if (u.role === "madd" && (u.L === "ا" || u.L === "ى")) add(w, u.b, "takhlis", "ألف المدّ تتبع الحرف المفخّم قبلها");
+            if (u.dagger) add(w, u.dagger.i, "takhlis", "الألف الصغيرة تتبع الحرف المفخّم قبلها");
+          }
         }
         u.marks.forEach((m) => { if (m.t === "swaw" || m.t === "sya") add(w, m.i, "madd_sila", "صلة هاء الكناية"); });
         if (u.dot && u.role === "letter") add(w, u.dot.i, "ikhtilas", "علامة اختلاس أو إشمام (قالون)");
@@ -341,16 +398,16 @@
     function precededByHiddenNun(wi, k) {
       const w = W[wi];
       let p = w.units[k - 1], pw = w;
-      if (!p) { if (wi === 0 || stopAfter(wi - 1)) return false; pw = W[wi - 1]; p = pw.units[pw.units.length - 1]; while (p && p.role === "zaid") p = pw.units[pw.units.indexOf(p) - 1]; }
+      if (!p) { pw = wi === 0 ? extPrev : W[wi - 1]; if (!pw) return false; p = pw.units[pw.units.length - 1]; while (p && p.role === "zaid") p = pw.units[pw.units.indexOf(p) - 1]; }
       if (!p) return false;
-      if (p.L === "ن" && p.bare) return true;
+      if (p.L === "ن" && !p.vowel && !p.shadda) return true;
       if (p.tanMark && p.tanMark.t.startsWith("o")) return true;
       if (p.role === "tanAlif" && p.tanMark && p.tanMark.t.startsWith("o")) return true;
       return false;
     }
     function raState(wi, k) {
       const w = W[wi], u = w.units[k];
-      const stop = stopAfter(wi) && k === lastPronounced(w);
+      const stop = stopAfter(wi) && k === lastPronounced(w) && u.vowel !== "i"; // a final ر with a kasra keeps its kasra: light
       if (u.vowel && !(stop && !u.shadda)) return u.vowel === "i" ? "tarqiq" : "tafkhim";
       if (u.shadda && u.vowel) return u.vowel === "i" ? "tarqiq" : "tafkhim";
       // sakin ra (written sukun, or at a stop)
@@ -379,21 +436,23 @@
   /** Resolve the displayed category per char. visible: Set of category ids; order: priority list; ov: {charIndex: catId|""} */
   function resolve(word, visible, order, ov) {
     const rank = new Map(order.map((id, i) => [id, i]));
-    return word.cand.map((list, i) => {
-      if (ov && Object.prototype.hasOwnProperty.call(ov, i)) return ov[i] || null;
+    const pick = (list, key) => {
+      if (ov && Object.prototype.hasOwnProperty.call(ov, key)) return ov[key] || null;
       let best = null, br = 1e9;
       for (const c of list) {
-        if (c.cat === "__hide") continue;
-        if (!visible.has(c.cat)) continue;
+        if (c.cat === "__hide" || !visible.has(c.cat)) continue;
         const r = rank.has(c.cat) ? rank.get(c.cat) : 500;
         if (r < br) { br = r; best = c.cat; }
       }
       if (list.some((c) => c.cat === "__hide") && visible.has("harakat")) return "__hide";
       return best;
-    });
+    };
+    const out = word.cand.map((list, i) => pick(list, i));
+    out.s2 = (word.cand2 || []).map((list, i) => pick(list, i + "b")); // second stroke of a tanween
+    return out;
   }
 
-  const api = { CATEGORIES, DEFAULT_ORDER, SETTINGS, parseWord, wordRoles, analyzeAyah, resolve, classOf, LETTER_NAME, MT };
+  const api = { NUN_RULES, CATEGORIES, DEFAULT_ORDER, SETTINGS, parseWord, wordRoles, analyzeAyah, resolve, classOf, LETTER_NAME, MT };
   root.Tajweed = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

@@ -4,7 +4,7 @@ import fs from "fs";
 
 const OUT = "../site/data";
 fs.mkdirSync(`${OUT}/s`, { recursive: true });
-const data = fs.readFileSync("../third_party/kfgqpc/qaloon/qaloon.10.ttf");
+const data = fs.readFileSync(process.env.ITQAN_FONT || "../third_party/kfgqpc/doori/doori.9.ttf");
 const face = new hb.Face(new hb.Blob(data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)));
 const font = new hb.Font(face);
 const UPEM = face.upem;
@@ -39,7 +39,7 @@ function shape(text) {
 }
 function shapeWith(text, feats) {
   const b = new hb.Buffer();
-  b.addText(text);
+  b.addText(text.replace(/\u06D2/g, "\u0649")); // the Douri font has no final-ya form for U+06D2: draw it as a dotless ya
   b.guessSegmentProperties();
   b.setClusterLevel(hb.ClusterLevel.CHARACTERS);
   hb.shape(font, b, feats || []);
@@ -91,6 +91,41 @@ for (const s of surahs) {
 const BASMALA = "بِسْمِ اِ۬للَّهِ اِ۬لرَّحْمَٰنِ اِ۬لرَّحِيمِ";
 const basmala = BASMALA.split(" ").map((w) => { const [adv, g] = shape(w); return [w, adv, g]; });
 
+// Tanween glyphs are split into their two strokes so each can take its own colour:
+// A = the stroke next to the letter (its haraka), B = the other one (the tanween's noon).
+// The kasra + small-meem ligature is split the same way (A = kasra, B = the meem of iqlab).
+const TAN = "\u064B\u064C\u064D\u0657\u065E\u0656\u08F0\u08F1\u08F2", IQ = "\u06E2\u06ED", HAR = "\u064E\u064F\u0650";
+const splitKind = new Map();
+for (const [text, [, flat]] of cache) {
+  const cl = new Set(); for (let i = 1; i < flat.length; i += 4) cl.add(flat[i]);
+  for (let i = 0; i < flat.length; i += 4) {
+    const ch = text[flat[i + 1]], nx = text[flat[i + 1] + 1], pv = text[flat[i + 1] - 1];
+    if (TAN.includes(ch)) splitKind.set(flat[i], "tan");
+    else if ((HAR.includes(ch) && nx && IQ.includes(nx) && !cl.has(flat[i + 1] + 1)) || (IQ.includes(ch) && pv && HAR.includes(pv) && !cl.has(flat[i + 1] - 1))) splitKind.set(flat[i], "lig");
+  }
+}
+function splitStrokes(d) {
+  const subs = d.split(/(?=M)/).filter(Boolean).map((p) => {
+    const nums = p.match(/-?\d+(\.\d+)?/g).map(Number), xs = [], ys = [];
+    for (let i = 0; i + 1 < nums.length; i += 2) { xs.push(nums[i]); ys.push(nums[i + 1]); }
+    const b = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+    return { p, b, area: (b[2] - b[0]) * (b[3] - b[1]), cx: (b[0] + b[2]) / 2, cy: (b[1] + b[3]) / 2 };
+  });
+  const maxA = Math.max(...subs.map((x) => x.area));
+  const big = subs.filter((x) => x.area > maxA * 0.3), holes = subs.filter((x) => x.area <= maxA * 0.3);
+  if (big.length !== 2) return null;
+  const below = (big[0].cy + big[1].cy) / 2 < 0;
+  // nearest to the letter first: lower stroke above the letter, upper stroke below it; side by side → the right one
+  big.sort((p, q) => (Math.abs(p.cy - q.cy) > 90 ? (below ? q.cy - p.cy : p.cy - q.cy) : q.cx - p.cx));
+  const parts = [big[0].p, big[1].p];
+  for (const h of holes) {
+    const inside = big.map((g) => h.cx >= g.b[0] && h.cx <= g.b[2] && h.cy >= g.b[1] && h.cy <= g.b[3]);
+    let k = inside[0] && !inside[1] ? 0 : inside[1] && !inside[0] ? 1 : Math.abs(h.cy - big[0].b[3]) < Math.abs(h.cy - big[1].b[3]) ? 0 : 1; // a damma's eye sits in its head
+    parts[k] += h.p;
+  }
+  return parts;
+}
+
 // Glyph table: outline path (font units, y up) + extents.
 const glyphs = {};
 let yMax = -1e9, yMin = 1e9;
@@ -98,6 +133,7 @@ for (const gid of [...used.keys()].sort((a, b) => a - b)) {
   const d = font.glyphToPath(gid);
   const e = font.glyphExtents(gid) || { xBearing: 0, yBearing: 0, width: 0, height: 0 };
   glyphs[gid] = [d, e.xBearing, e.yBearing + e.height, e.xBearing + e.width, e.yBearing];
+  if (splitKind.has(gid)) { const parts = splitStrokes(d); if (parts) glyphs[gid].push(parts[0], parts[1]); }
 }
 // Vertical extents of every word (marks included) to size the line box.
 const tops = [], bottoms = [];
@@ -116,4 +152,5 @@ yMax = pct(tops, 0.999); yMin = pct(bottoms, 0.001);
 
 fs.writeFileSync(`${OUT}/glyphs.json`, JSON.stringify({ upem: UPEM, yMax, yMin, g: glyphs }));
 fs.writeFileSync(`${OUT}/meta.json`, JSON.stringify({ surahs, basmala, upem: UPEM, yMax, yMin }));
+console.log("split glyphs:", [...splitKind].map(([g, k]) => g + ":" + k + (glyphs[g].length > 5 ? "" : "(one piece)")).join(" "));
 console.log({ surahs: surahs.length, totalWords, unique: cache.size, glyphs: used.size, UPEM, yMax, yMin, maxTop: tops.at(-1), minBottom: bottoms[0] });

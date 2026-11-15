@@ -230,3 +230,18 @@ textarea { width: 100%; resize: vertical; }
 .rec-timer { color: #FF6B6B; font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 600; }
 .stage video#rv { background: #000; }
 #stageRoot:not(:empty) ~ .toast { bottom: auto; top: calc(64px + env(safe-area-inset-top, 0px)); }
+
+/* Drills, student recorder, print */
+.chip.brush.on { outline: 2px solid var(--zitouna); outline-offset: 1px; }
+.ayah-show.paint { font-size: clamp(34px, 9vw, 54px); padding: 22px 10px; }
+.ayah-show.paint use { pointer-events: bounding-box; cursor: pointer; }
+.paintw { cursor: pointer; }
+.srec { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; background: var(--page); border: 1px solid var(--gold); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; font-size: 13.5px; }
+.srec .grow { flex: 1; min-width: 160px; color: var(--muted); }
+.nav a#liveLink { color: var(--danger); }
+@media print {
+  .top, .bar, .legend, .foot a, #sheetRoot, #stageRoot, .toast, .lesson-banner, .more, .srec, body::before { display: none !important; }
+  body { background: #fff; padding: 0; } .page { box-shadow: none; } main { max-width: none; padding: 0; }
+  .view:not(#v-mushaf) { display: none !important; } .mushaf { font-size: 22pt; }
+  .w, .ae { break-inside: avoid; } * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
