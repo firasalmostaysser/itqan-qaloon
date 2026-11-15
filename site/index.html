@@ -249,7 +249,8 @@ textarea { width: 100%; resize: vertical; }
 
 /* Drills, student recorder, print */
 .chip.brush.on { outline: 2px solid var(--zitouna); outline-offset: 1px; }
-.ayah-show.paint { font-size: clamp(34px, 9vw, 54px); padding: 22px 10px; }
+.ayah-show.paint { padding: 26px 10px; line-height: 1.25; }
+.ayah-show.paint use { stroke: transparent; stroke-width: 90; }
 .ayah-show.paint use { pointer-events: bounding-box; cursor: pointer; }
 .paintw { cursor: pointer; }
 .srec { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; background: var(--page); border: 1px solid var(--gold); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; font-size: 13.5px; }
@@ -944,6 +945,27 @@ textarea { width: 100%; resize: vertical; }
     covCache.set(text, cov);
     return cov;
   }
+  /** Colour of one drawn part. A split glyph has two parts: the first stroke (the letter's haraka) and the second
+      (the tanween's noon, or the small meem of iqlab). `colors.direct` (the student's own painting) wins when present. */
+  function partCats(text, c, idxs, colors, split) {
+    if (colors && colors.direct) return [colors.direct.get(String(c)) || null, colors.direct.get(c + "b") || null];
+    if (!split || !idxs) return [pickCat(colors, idxs), null];
+    const iq = idxs.find((j) => IQ_CH.includes(text[j])), tn = idxs.find((j) => TAN_CH.includes(text[j]));
+    if (iq != null) return [pickCat(colors, idxs.filter((j) => j !== iq)), (colors && colors[iq]) || null];
+    if (tn != null) return [(colors && colors[tn]) || null, (colors && colors.s2 && colors.s2[tn]) || null];
+    const k = pickCat(colors, idxs); return [k, k];
+  }
+  /** Every drawn part of a word with the colour it should take: Map "cluster" | "cluster b" → category. */
+  function partsOf(wd, colors) {
+    const text = wd[0], g = wd[2], cov = coverage(text, g), out = new Map();
+    for (let i = 0; i < g.length; i += 4) {
+      const e = GLY[g[i]], c = g[i + 1];
+      if (!e || !e[0]) continue;
+      const [ca, cb] = partCats(text, c, cov.get(c), colors, !!e[5]);
+      out.set(String(c), ca); if (e[5]) out.set(c + "b", cb);
+    }
+    return out;
+  }
   /** wd = [text, advance, flat glyphs [gid, cluster, x, y, …]]; colors = category per char; range limits to chars [from, to). */
   function wordSVG(wd, colors, range) {
     if (typeof wd[0] === "number") wd = ["", wd[0], wd[1]]; // ayah-end ornament: [advance, glyphs]
@@ -958,16 +980,11 @@ textarea { width: 100%; resize: vertical; }
       minX = Math.min(minX, x + e[1]); maxX = Math.max(maxX, x + e[3]);
       const idxs = cov.get(c), hit = HIT ? ` data-c="${c}"` : "", tf = `transform="translate(${x} ${-y}) scale(1 -1)"`;
       if (e[5] && idxs) {
-        // first stroke = the letter's haraka, second = the tanween's noon (or the small meem of iqlab)
-        const iq = idxs.find((j) => IQ_CH.includes(text[j])), tn = idxs.find((j) => TAN_CH.includes(text[j]));
-        let ca = null, cb = null;
-        if (iq != null) { cb = colors && colors[iq]; ca = pickCat(colors, idxs.filter((j) => j !== iq)); }
-        else if (tn != null) { ca = colors && colors[tn]; cb = colors && colors.s2 && colors.s2[tn]; }
-        else ca = cb = pickCat(colors, idxs);
-        uses += `<use href="#g${gid}a" ${tf}${ca ? ` class="k-${ca}"` : ""}${hit}/><use href="#g${gid}b" ${tf}${cb ? ` class="k-${cb}"` : ""}${hit}/>`;
+        const [ca, cb] = partCats(text, c, idxs, colors, true);
+        uses += `<use href="#g${gid}a" ${tf}${ca ? ` class="k-${ca}"` : ""}${hit}/><use href="#g${gid}b" ${tf}${cb ? ` class="k-${cb}"` : ""}${hit}${HIT ? ' data-s="b"' : ""}/>`;
         continue;
       }
-      const cat = pickCat(colors, idxs);
+      const cat = partCats(text, c, idxs, colors, false)[0];
       uses += `<use href="#g${gid}" ${tf}${cat ? ` class="k-${cat}"` : ""}${hit}/>`;
     }
     if (minX > maxX) { minX = 0; maxX = adv || 1; }
@@ -1787,63 +1804,47 @@ textarea { width: 100%; resize: vertical; }
   }
 
   /* ---------------- practice: tables and the colouring drill ---------------- */
-  function resetExercise() { P.picked = null; P.placed = {}; P.checked = false; P.paint = []; P.solved = false; }
+  function resetExercise() { P.picked = null; P.placed = {}; P.checked = false; P.paint = {}; P.solved = false; }
   const KINDS = [["time", "أزمنة الحروف"], ["nun", "النون الساكنة والتنوين والميم"], ["paint", "التلوين"]];
   const kindSeg = () => `<div class="seg" id="pKind" style="margin-bottom:10px;flex-wrap:wrap">${KINDS.map(([k, l]) => `<button data-k="${k}" aria-pressed="${(P.kind || "time") === k}">${l}</button>`).join("")}</div>`;
   function bindKindSeg(v) { $$("#pKind button", v).forEach((b) => (b.onclick = () => { P.kind = b.dataset.k; resetExercise(); renderPractice(); })); }
-  /** Where a brush puts its colour on one letter: time colours on the sukun or shadda (or the shape), navy on the
-      harakat, ghunna on the tanween's second stroke / small meem / shadda / shape, takhlis on the shape. */
-  function brushTargets(u, cat) {
-    if (cat === "harakat") return [u.vowelMark, u.tanMark].filter(Boolean).map((m) => ({ i: m.i }));
-    if (cat === "takhlis") return [{ i: u.b }];
-    if (cat === "ghunna") return u.tanMark ? [{ i: u.tanMark.i, s2: true }] : u.iqlab ? [{ i: u.iqlab.i }] : u.shadda ? [{ i: u.shadda.i }] : [{ i: u.b }];
-    const signs = [u.sukun, u.shadda].filter(Boolean).map((m) => ({ i: m.i }));
-    return signs.length ? signs : u.tanMark ? [{ i: u.tanMark.i, s2: true }] : [{ i: u.b }];
-  }
+  /** Colouring drill: the student paints part by part — the letter, its shadda, sukun, fatha, damma, kasra,
+      each stroke of a tanween — and each part is graded on its own. */
   function renderPaint(v, S) {
     const ay = S.ayahs[P.ai], an = analyze(S, P.ai);
     const brushes = CORE.map((id) => CATMAP.get(id)).filter(Boolean);
-    if (!P.brush || !CATMAP.has(P.brush)) P.brush = brushes[0].id;
-    P.paint = P.paint || [];
+    if (!P.brush || (P.brush !== "__erase" && !CATMAP.has(P.brush))) P.brush = brushes[0].id;
+    if (!P.paint || Array.isArray(P.paint)) P.paint = {};
     const coreSet = new Set(CORE);
     const words = ay.w.map((wd, wi) => ({ wd, wi })).filter((x) => !x.wd[3]);
-    // expected: letter × colour
-    const expected = new Set();
-    for (const { wd, wi } of words) {
-      const res = T.resolve(an[wi], coreSet, PRIORITY, ovFor(S.n, ay.a, wi, wd[0]));
-      an[wi].units.forEach((u, k) => {
-        for (const i of [u.b].concat(u.marks.map((m) => m.i))) { if (coreSet.has(res[i])) expected.add(`${wi}:${k}:${res[i]}`); if (coreSet.has(res.s2[i])) expected.add(`${wi}:${k}:${res.s2[i]}`); }
-      });
-    }
-    const mine = new Set(P.paint);
-    const colorsOf = (wi) => {
-      const w = an[wi], c = w.chars.map(() => null); c.s2 = w.chars.map(() => null);
-      for (const key of P.paint) { const [a, k, cat] = key.split(":"); if (+a !== wi) continue; for (const t of brushTargets(w.units[+k], cat)) (t.s2 ? c.s2 : c)[t.i] = cat; }
-      return c;
-    };
+    const solution = (wi) => T.resolve(an[wi], coreSet, PRIORITY, ovFor(S.n, ay.a, wi, ay.w[wi][0]));
+    const expected = new Map();
+    for (const { wd, wi } of words) for (const [k, cat] of partsOf(wd, solution(wi))) if (coreSet.has(cat)) expected.set(`${wi}:${k}`, cat);
+    const mineOf = (wi) => { const m = new Map(); for (const key in P.paint) { const j = key.indexOf(":"); if (+key.slice(0, j) === wi) m.set(key.slice(j + 1), P.paint[key]); } const c = []; c.direct = m; return c; };
     HIT = true;
-    const line = words.map(({ wd, wi }) => `<span class="w paintw" data-wi="${wi}">${wordSVG(wd, P.solved ? T.resolve(an[wi], coreSet, PRIORITY, ovFor(S.n, ay.a, wi, wd[0])) : colorsOf(wi))}</span>`).join(" ") + ` <span class="ae">${wordSVG(ay.e, null)}</span>`;
+    const line = words.map(({ wd, wi }) => `<span class="w paintw" data-wi="${wi}">${wordSVG(wd, P.solved ? solution(wi) : mineOf(wi))}</span>`).join(" ") + ` <span class="ae">${wordSVG(ay.e, null)}</span>`;
     HIT = false;
     let result = "";
     if (P.checked) {
-      let right = 0, extra = 0;
-      for (const k of mine) expected.has(k) ? right++ : extra++;
-      const missing = expected.size - right;
-      const per = brushes.map((b) => { const need = [...expected].filter((k) => k.endsWith(":" + b.id)).length, got = [...mine].filter((k) => k.endsWith(":" + b.id) && expected.has(k)).length; return need ? `<span class="chip small" style="--dot:var(--c-${b.id})"><span class="dot"></span>${esc(b.name)} ${AR(got)}/${AR(need)}</span>` : ""; }).join("");
-      const sc = LS.get("scores", {}); sc[`paint:${S.n}:${ay.a}`] = { right, total: expected.size, extra, at: Date.now() }; LS.set("scores", sc);
-      result = `<div class="result"><b>${missing === 0 && extra === 0 ? "أحسنت! التلوين صحيح كله." : `الصحيح ${AR(right)} من ${AR(expected.size)}${extra ? `، وزائد في غير موضعه ${AR(extra)}` : ""}${missing ? `، وبقي ${AR(missing)}` : ""}.`}</b><div class="missing" style="margin-top:6px">${per}</div></div>`;
+      let right = 0, wrong = 0;
+      for (const key in P.paint) expected.get(key) === P.paint[key] ? right++ : wrong++;
+      const missing = [...expected.keys()].filter((k) => !(k in P.paint)).length;
+      const per = brushes.map((b) => { const need = [...expected.values()].filter((x) => x === b.id).length, got = Object.keys(P.paint).filter((k) => P.paint[k] === b.id && expected.get(k) === b.id).length; return need ? `<span class="chip small" style="--dot:var(--c-${b.id})"><span class="dot"></span>${esc(b.name)} ${AR(got)}/${AR(need)}</span>` : ""; }).join("");
+      const sc = LS.get("scores", {}); sc[`paint:${S.n}:${ay.a}`] = { right, total: expected.size, wrong, at: Date.now() }; LS.set("scores", sc);
+      result = `<div class="result"><b>${missing === 0 && wrong === 0 ? "أحسنت! التلوين صحيح كله." : `الصحيح ${AR(right)} من ${AR(expected.size)}${wrong ? `، وفي غير موضعه أو بغير لونه ${AR(wrong)}` : ""}${missing ? `، وبقي ${AR(missing)}` : ""}.`}</b><div class="missing" style="margin-top:6px">${per}</div></div>`;
     }
     const opts = META.surahs.map((s) => `<option value="${s.n}"${s.n === P.surah ? " selected" : ""}>${AR(s.n)} · ${esc(s.ar)}</option>`).join("");
     const aopts = S.ayahs.map((a, i) => `<option value="${i}"${i === P.ai ? " selected" : ""}>${AR(a.a)}</option>`).join("");
     v.innerHTML = `<h2 class="page-title">التمارين</h2>${kindSeg()}
-      <p class="lead">اختر لوناً ثم اضغط على الحرف. يضع القلم كل لون في موضعه: ألوان الساكن على السكون أو الشدّة، والأزرق الغامق على الحركة، والوردي على العلامة الثانية للتنوين أو الميم الصغيرة أو الشدّة، والبرتقالي على الحرف. اضغط مرة ثانية لإزالة اللون.</p>
+      <p class="lead">اختر لوناً ثم اضغط على الجزء الذي تريد تلوينه: الحرف نفسه، أو الشدّة، أو السكون، أو الفتحة، أو الضمّة، أو الكسرة، أو إحدى علامتي التنوين. كل جزء يُلوَّن ويُصحَّح وحده. اضغط الجزء مرة ثانية باللون نفسه لإزالته.</p>
       <div class="bar">
         <div class="field"><label for="pS">السورة</label><select id="pS">${opts}</select></div>
         <div class="field"><label for="pA">الآية</label><select id="pA">${aopts}</select></div>
         <button class="iconbtn" id="pPrev" aria-label="الآية السابقة">›</button><button class="iconbtn" id="pNext" aria-label="الآية التالية">‹</button>
+        <div class="field" aria-label="حجم الخط"><button class="iconbtn" id="ptMinus" aria-label="تصغير">−</button><button class="iconbtn" id="ptPlus" aria-label="تكبير">+</button></div>
       </div>
       <div class="legend" style="position:static">${brushes.map((b) => `<button class="chip brush${P.brush === b.id ? " on" : ""}" data-brush="${b.id}" style="--dot:var(--c-${b.id})"><span class="dot"></span>${esc(b.name)}</button>`).join("")}<button class="chip brush${P.brush === "__erase" ? " on" : ""}" data-brush="__erase" style="--dot:transparent"><span class="dot"></span>ممحاة</button></div>
-      <div class="ayah-show paint" id="pAyah">${line}</div>
+      <div class="ayah-show paint" id="pAyah" style="font-size:${P.psize || 56}px">${line}</div>
       <div class="bar"><button class="btn primary" id="ptCheck">تحقّق</button><button class="btn" id="ptSolve">${P.solved ? "عُد إلى تلويني" : "اعرض الحل"}</button><button class="btn" id="ptClear">امسح الكل</button></div>
       ${result}`;
     bindKindSeg(v);
@@ -1851,24 +1852,23 @@ textarea { width: 100%; resize: vertical; }
     $("#pA", v).onchange = (e) => { P.ai = +e.target.value; resetExercise(); renderPractice(); };
     $("#pPrev", v).onclick = () => { if (P.ai > 0) { P.ai--; resetExercise(); renderPractice(); } };
     $("#pNext", v).onclick = () => { if (P.ai < S.ayahs.length - 1) { P.ai++; resetExercise(); renderPractice(); } };
+    $("#ptMinus", v).onclick = () => { P.psize = Math.max(36, (P.psize || 56) - 8); renderPractice(); };
+    $("#ptPlus", v).onclick = () => { P.psize = Math.min(120, (P.psize || 56) + 8); renderPractice(); };
     $$("[data-brush]", v).forEach((b) => (b.onclick = () => { P.brush = b.dataset.brush; renderPractice(); }));
     $("#pAyah", v).onclick = (e) => {
       if (P.solved) return;
       const use = e.target.closest("use[data-c]"), wEl = e.target.closest(".paintw");
-      if (!wEl) return;
-      const wi = +wEl.dataset.wi, w = an[wi];
-      let k = 0;
-      if (use) { const c = +use.dataset.c; w.units.forEach((u, j) => { if (u.b <= c) k = j; }); }
-      else return;
-      const role = w.units[k].role;
-      if (role === "wasl" || role === "silentWasl") { toast("همزة الوصل لا تُلوَّن."); return; }
-      if (P.brush === "__erase") P.paint = P.paint.filter((x) => !x.startsWith(`${wi}:${k}:`));
-      else { const key = `${wi}:${k}:${P.brush}`; P.paint = P.paint.includes(key) ? P.paint.filter((x) => x !== key) : P.paint.concat(key); }
+      if (!use || !wEl) return;
+      const wi = +wEl.dataset.wi, w = an[wi], c = +use.dataset.c;
+      let unit = w.units[0]; for (const u of w.units) if (u.b <= c) unit = u;
+      if (unit.role === "wasl" || unit.role === "silentWasl") { toast("همزة الوصل لا تُلوَّن."); return; }
+      const key = `${wi}:${c}${use.dataset.s || ""}`;
+      if (P.brush === "__erase" || P.paint[key] === P.brush) delete P.paint[key]; else P.paint[key] = P.brush;
       P.checked = false; renderPractice();
     };
     $("#ptCheck", v).onclick = () => { P.checked = true; P.solved = false; renderPractice(); };
     $("#ptSolve", v).onclick = () => { P.solved = !P.solved; renderPractice(); };
-    $("#ptClear", v).onclick = () => { P.paint = []; P.checked = false; P.solved = false; renderPractice(); };
+    $("#ptClear", v).onclick = () => { P.paint = {}; P.checked = false; P.solved = false; renderPractice(); };
   }
   async function renderPractice() {
     const v = $("#v-practice");

@@ -233,7 +233,8 @@ textarea { width: 100%; resize: vertical; }
 
 /* Drills, student recorder, print */
 .chip.brush.on { outline: 2px solid var(--zitouna); outline-offset: 1px; }
-.ayah-show.paint { font-size: clamp(34px, 9vw, 54px); padding: 22px 10px; }
+.ayah-show.paint { padding: 26px 10px; line-height: 1.25; }
+.ayah-show.paint use { stroke: transparent; stroke-width: 90; }
 .ayah-show.paint use { pointer-events: bounding-box; cursor: pointer; }
 .paintw { cursor: pointer; }
 .srec { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; background: var(--page); border: 1px solid var(--gold); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; font-size: 13.5px; }
