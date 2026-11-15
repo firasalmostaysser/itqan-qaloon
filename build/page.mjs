@@ -7,6 +7,9 @@ const put = (marker, file) => { const c = fs.readFileSync(src + file, "utf8"); h
 put("/*STYLE*/", "style.css");
 put("/*ENGINE*/", "engine.js");
 put("/*APP*/", "app.js");
+import crypto from "crypto";
+const dataV = crypto.createHash("sha1").update(fs.readFileSync("../site/data/glyphs.json")).digest("hex").slice(0, 10);
+html = html.replace("/*DATA_V*/", dataV);
 fs.mkdirSync("../artifact", { recursive: true });
 fs.writeFileSync("../artifact/index.html", html);
 const cut = html.indexOf('<svg id="gdefs"');

@@ -104,7 +104,10 @@
   }
 
   /* ---------------- data ---------------- */
-  async function getJSON(u) { const r = await fetch(u, { cache: "no-cache" }); if (!r.ok) throw new Error(u + " " + r.status); return r.json(); }
+  // Quran data is tied to the font it was shaped with: every build gets its own address, so a phone can never
+  // mix an old glyph table with new surah files.
+  const DATA_V = "/*DATA_V*/";
+  async function getJSON(u) { if (!/state\.json|site\.json/.test(u)) u += "?v=" + DATA_V; const r = await fetch(u, { cache: "no-cache" }); if (!r.ok) throw new Error(u + " " + r.status); return r.json(); }
   function loadSurah(n) {
     if (!surahCache.has(n)) surahCache.set(n, getJSON(`data/s/${String(n).padStart(3, "0")}.json`).catch((e) => { surahCache.delete(n); throw e; }));
     return surahCache.get(n);
