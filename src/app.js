@@ -168,6 +168,8 @@
   const MARK_RE = /[\u064B-\u065F\u0670\u06D6-\u06ED\u0654\u0655\u200F]/;
   const covCache = new Map();
   const TAN_CH = "\u064B\u064C\u064D\u0657\u065E\u0656\u08F0\u08F1\u08F2", IQ_CH = "\u06E2\u06ED";
+  const WASL_RE = /^ا[\u064E\u064F\u0650][\u06EC\u06EA]/;
+  let WASL_ALT = null;
   let HIT = false; // when true, glyphs carry their character index so a tap can find the letter
   function coverage(text, g) {
     let cov = covCache.get(text);
@@ -220,10 +222,16 @@
     const text = wd[0], adv = wd[1], g = wd[2];
     const cov = coverage(text, g);
     let minX = range ? 1e9 : 0, maxX = range ? -1e9 : adv, uses = "";
+    const alt = WASL_ALT && WASL_RE.test(text) ? WASL_ALT(wd) : null; // hamzat al-wasl drill: draw another alif form
     for (let i = 0; i < g.length; i += 4) {
       const gid = g[i], c = g[i + 1], x = g[i + 2], y = g[i + 3];
       const e = GLY[gid];
       if (!e || !e[0]) continue;
+      if (alt && c === 0) {
+        for (let j = 0; j < alt[1].length; j += 4) { const e2 = GLY[alt[1][j]]; if (e2 && e2[0]) uses += `<use href="#g${alt[1][j]}" transform="translate(${x + alt[1][j + 2]} ${-alt[1][j + 3]}) scale(1 -1)"${alt[2] ? ` class="${alt[2]}"` : ""}/>`; }
+        minX = Math.min(minX, x + e[1]); maxX = Math.max(maxX, x + e[3]);
+        continue;
+      }
       if (range && (c < range[0] || c >= range[1])) continue;
       minX = Math.min(minX, x + e[1]); maxX = Math.max(maxX, x + e[3]);
       const idxs = cov.get(c), hit = HIT ? ` data-c="${c}"` : "", tf = `transform="translate(${x} ${-y}) scale(1 -1)"`;
@@ -246,15 +254,16 @@
     t.textContent = msg; t.hidden = false;
     clearTimeout(toast.t); toast.t = setTimeout(() => (t.hidden = true), ms || 3800);
   }
-  const ROUTES = ["mushaf", "lessons", "practice", "about", "admin"];
+  const ROUTES = ["home", "mushaf", "lessons", "practice", "about", "admin"];
   function route() {
-    let r = (location.hash || "#mushaf").slice(1);
-    if (!ROUTES.includes(r)) r = "mushaf";
+    let r = (location.hash || "#home").slice(1);
+    if (!ROUTES.includes(r)) r = "home";
     if (r === "admin" && !CAN_EDIT) r = "admin";
     for (const v of $$(".view")) v.hidden = v.id !== "v-" + r;
     for (const a of $$(".nav a")) a.setAttribute("aria-current", a.getAttribute("href") === "#" + r ? "page" : "false");
     closeSheet();
-    if (r === "mushaf") renderMushaf();
+    if (r === "home") renderHome();
+    else if (r === "mushaf") renderMushaf();
     else if (r === "lessons") renderLessons();
     else if (r === "practice") renderPractice();
     else if (r === "about") renderAbout();
@@ -263,6 +272,30 @@
     setTopH();
   }
   function setTopH() { const h = $(".top"); if (h) document.documentElement.style.setProperty("--topH", h.offsetHeight + "px"); }
+
+  /* ---------------- home: the surahs, and the tabs of one surah ---------------- */
+  function renderHome() {
+    const card = (s) => `<button class="scard" data-s="${s.n}"><span class="snum">${AR(s.n)}</span><span class="sname">${esc(s.ar)}</span><span class="scount">${AR(s.count)} ${s.count > 10 ? "آية" : "آيات"}</span></button>`;
+    const juz = META.surahs.filter((s) => s.n >= 78), rest = META.surahs.filter((s) => s.n > 1 && s.n < 78);
+    $("#v-home").innerHTML = `<div class="hero"><h2 class="page-title">دورة الطريق إلى الإتقان</h2>
+      <p class="lead">بطريقة الشيخ المقرئ محمّد بن عبد الله جوّاد · برواية قالون عن نافع. اختر سورة لترى القواعد عليها وتمارينها: التلوين، وأزمنة الحروف، وأحكام الميم والنون الساكنتين، وهمزة الوصل.</p></div>
+      <div class="sgrid one">${card(META.surahs[0])}</div>
+      <h3 class="sec">جزء عمّ</h3><div class="sgrid">${juz.map(card).join("")}</div>
+      <details class="allsurahs"><summary>باقي سور القرآن</summary><div class="sgrid">${rest.map(card).join("")}</div></details>`;
+    $$("#v-home [data-s]").forEach((b) => (b.onclick = () => { ui.surah = +b.dataset.s; LS.set("surah", ui.surah); ui.lesson = null; LS.set("lesson", null); location.hash = "#mushaf"; }));
+  }
+  const STABS = [["show", "القواعد على السورة"], ["paint", "التلوين"], ["time", "أزمنة الحروف"], ["nun", "الميم والنون"], ["wasl", "همزة الوصل"]];
+  const surahTabs = (active) => `<div class="stabs" id="stabs">${STABS.map(([k, l]) => `<button data-st="${k}" aria-pressed="${active === k}">${l}</button>`).join("")}</div>`;
+  function bindSurahTabs(root) {
+    $$("#stabs button", root).forEach((b) => (b.onclick = () => {
+      const k = b.dataset.st;
+      if (k === "show") { ui.surah = P.surah && (location.hash === "#practice") ? P.surah : ui.surah; LS.set("surah", ui.surah); location.hash = "#mushaf"; return; }
+      if (location.hash !== "#practice") { P.surah = ui.surah; P.ai = 0; }
+      P.kind = k; if (k !== "paint") P.mode = P.mode || "show"; resetExercise();
+      if (location.hash === "#practice") renderPractice(); else location.hash = "#practice";
+    }));
+  }
+  const surahHead = (n) => `<div class="shead"><a class="btn ghost" href="#home">→ السور</a><h2 class="page-title" style="margin:0">سورة ${esc(META.surahs[n - 1].ar)}</h2><span class="scount">${AR(META.surahs[n - 1].count)} آية · رواية قالون عن نافع</span></div>`;
 
   /* ---------------- legend ---------------- */
   function legendHTML() {
@@ -292,6 +325,7 @@
     v.innerHTML = `
       ${lesson ? `<div class="lesson-banner"><h3>المرحلة ${AR(LESSONS.indexOf(lesson) + 1)}: ${esc(lesson.title)}</h3><p>${esc(lesson.text)}</p>
         <div class="row"><button class="btn primary" id="lessonDone">${(LS.get("done", [])).includes(lesson.id) ? "أنهيت هذه المرحلة ✓" : "أنهيت المرحلة"}</button><button class="btn ghost" id="lessonExit">الخروج من المرحلة</button><a class="btn ghost" href="#lessons">كل المراحل</a></div></div>` : ""}
+      ${surahHead(ui.surah)}${surahTabs("show")}
       ${CAN_EDIT && !lesson ? `<div class="lesson-banner"><h3>أدوات الشيخ</h3><p>اضغط رقم الآية ${canRecord() ? "لتسجيل تلاوتها بالكاميرا" : "لإضافة فيديو تلاوتها"}، واضغط أي كلمة لتعديل ألوانها أو تسجيل نطقها.</p></div>` : ""}
       <div class="bar">
         <div class="field"><label for="surahSel">السورة</label><select id="surahSel">${opts}</select></div>
@@ -306,6 +340,7 @@
       <div class="legend" id="legend">${legendHTML()}</div>
       <article class="page" id="page" style="--q:${ui.size}px"><div class="loading"><div class="bar-l"><i></i></div><span>تحميل السورة…</span></div></article>`;
     bindLegend($("#legend", v), () => redrawMushaf());
+    bindSurahTabs(v);
     $("#surahSel", v).onchange = (e) => { ui.surah = +e.target.value; LS.set("surah", ui.surah); renderMushaf(); };
     $("#modeSel", v).onchange = (e) => { ui.mode = e.target.value; LS.set("mode", ui.mode); redrawMushaf(); };
     $("#fsDown", v).onclick = () => setSize(-2);
@@ -1026,8 +1061,8 @@
   function onStateChanged() {
     anVersion++; anCache.clear(); BASMALA_AN = null;
     refreshCats();
-    const r = (location.hash || "#mushaf").slice(1);
-    if (r === "mushaf" || !ROUTES.includes(r)) { if ($("#legend")) $("#legend").innerHTML = legendHTML(); redrawMushaf(); }
+    const r = (location.hash || "#home").slice(1);
+    if (r === "mushaf") { if ($("#legend")) $("#legend").innerHTML = legendHTML(); redrawMushaf(); }
     else if (r === "practice") renderPractice();
     else if (r === "about") renderAbout();
     else if (r === "admin") renderAdmin();
@@ -1052,10 +1087,55 @@
   }
 
   /* ---------------- practice: tables and the colouring drill ---------------- */
-  function resetExercise() { P.picked = null; P.placed = {}; P.checked = false; P.paint = {}; P.solved = false; }
+  function resetExercise() { P.picked = null; P.placed = {}; P.checked = false; P.paint = {}; P.solved = false; P.wasl = {}; P.wPick = null; }
   const KINDS = [["time", "أزمنة الحروف"], ["nun", "النون الساكنة والتنوين والميم"], ["paint", "التلوين"]];
   const kindSeg = () => `<div class="seg" id="pKind" style="margin-bottom:10px;flex-wrap:wrap">${KINDS.map(([k, l]) => `<button data-k="${k}" aria-pressed="${(P.kind || "time") === k}">${l}</button>`).join("")}</div>`;
   function bindKindSeg(v) { $$("#pKind button", v).forEach((b) => (b.onclick = () => { P.kind = b.dataset.k; resetExercise(); renderPractice(); })); }
+  /** Hamzat al-wasl drill: every marked wasl alif is drawn plain; the student gives each one of the six forms. */
+  const WASL_LABEL = { "\u064E": "بعد فتح", "\u0650": "بعد كسر", "\u064F": "بعد ضمّ", "\u06EC": "يُبدأ بها بالفتح", "\u06EA": "يُبدأ بها بالكسر" };
+  function renderWasl(v, S) {
+    const ay = S.ayahs[P.ai];
+    P.wasl = P.wasl || {};
+    const words = ay.w.map((wd, wi) => ({ wd, wi })).filter((x) => !x.wd[3]);
+    const targets = words.filter((x) => WASL_RE.test(x.wd[0]));
+    const keyOf = (wd) => wd[0].slice(1, 3);
+    if (P.wPick == null || !targets.some((t) => t.wi === P.wPick)) P.wPick = targets.length ? targets[0].wi : null;
+    let cur = -1;
+    WASL_ALT = () => { const k = P.solved ? keyOf(ay.w[cur]) : P.wasl[cur]; const sh = k ? META.waslForms[k] : META.plainAlif; return [sh[0], sh[1], P.checked && !P.solved && P.wasl[cur] ? (P.wasl[cur] === keyOf(ay.w[cur]) ? "k-ok" : "k-bad") : cur === P.wPick && !P.solved ? "k-pick" : ""]; };
+    const line = words.map(({ wd, wi }) => { cur = wi; return WASL_RE.test(wd[0]) ? `<button class="w${wi === P.wPick ? " picked" : ""}" data-ww="${wi}" aria-label="${esc(plain(wd[0]))}">${wordSVG(wd, null)}</button>` : `<span class="w">${wordSVG(wd, null)}</span>`; }).join(" ") + ` <span class="ae">${wordSVG(ay.e, null)}</span>`;
+    WASL_ALT = null;
+    const forms = Object.keys(META.waslForms).map((k) => `<button class="wform" data-wf="${k}" aria-pressed="${P.wPick != null && P.wasl[P.wPick] === k}"><span class="wf-g">${wordSVG(["", META.waslForms[k][0], META.waslForms[k][1]], null)}</span><span>${WASL_LABEL[k[0]]}<br>${WASL_LABEL[k[1]]}</span></button>`).join("");
+    let result = "";
+    if (P.checked) {
+      const right = targets.filter((t) => P.wasl[t.wi] === keyOf(t.wd)).length;
+      result = `<div class="result"><b>${right === targets.length ? "أحسنت! كل همزات الوصل صحيحة." : `الصحيح ${AR(right)} من ${AR(targets.length)}.`}</b></div>`;
+    }
+    const opts = META.surahs.map((s) => `<option value="${s.n}"${s.n === P.surah ? " selected" : ""}>${AR(s.n)} · ${esc(s.ar)}</option>`).join("");
+    const aopts = S.ayahs.map((a, i) => `<option value="${i}"${i === P.ai ? " selected" : ""}>${AR(a.a)}</option>`).join("");
+    v.innerHTML = `${surahHead(P.surah)}${surahTabs("wasl")}
+      <p class="lead">كل همزة وصل مرسومة هنا ألفاً مجرّدة. اختر الكلمة ثم اختر شكل همزتها: موضع العلامة بحسب حركة ما قبلها (فوق بعد الفتح، تحت بعد الكسر، وسط بعد الضمّ)، والنقطة بحسب ما يُبدأ به.</p>
+      <div class="bar">
+        <div class="field"><label for="pS">السورة</label><select id="pS">${opts}</select></div>
+        <div class="field"><label for="pA">الآية</label><select id="pA">${aopts}</select></div>
+        <button class="iconbtn" id="pPrev" aria-label="الآية السابقة">›</button><button class="iconbtn" id="pNext" aria-label="الآية التالية">‹</button>
+      </div>
+      <div class="ayah-show pool" id="pAyah" style="font-size:44px">${line}</div>
+      ${targets.length ? `<div class="wforms">${forms}</div>
+      <div class="bar"><button class="btn primary" id="wCheck">تحقّق</button><button class="btn" id="wSolve">${P.solved ? "عُد إلى إجاباتي" : "اعرض الحل"}</button><button class="btn" id="wClear">امسح الكل</button></div>` : `<p class="empty">لا توجد في هذه الآية همزة وصل معلَّمة. انتقل إلى آية أخرى.</p>`}
+      ${result}`;
+    bindSurahTabs(v);
+    $("#pS", v).onchange = (e) => { P.surah = +e.target.value; ui.surah = P.surah; LS.set("surah", ui.surah); P.ai = 0; resetExercise(); renderPractice(); };
+    $("#pA", v).onchange = (e) => { P.ai = +e.target.value; resetExercise(); renderPractice(); };
+    $("#pPrev", v).onclick = () => { if (P.ai > 0) { P.ai--; resetExercise(); renderPractice(); } };
+    $("#pNext", v).onclick = () => { if (P.ai < S.ayahs.length - 1) { P.ai++; resetExercise(); renderPractice(); } };
+    $$("[data-ww]", v).forEach((b) => (b.onclick = () => { P.wPick = +b.dataset.ww; renderPractice(); }));
+    $$("[data-wf]", v).forEach((b) => (b.onclick = () => { if (P.wPick == null) return; P.wasl[P.wPick] = b.dataset.wf; P.checked = false; P.solved = false; const nx = targets.find((t) => !P.wasl[t.wi]); if (nx) P.wPick = nx.wi; renderPractice(); }));
+    if (targets.length) {
+      $("#wCheck", v).onclick = () => { P.checked = true; P.solved = false; renderPractice(); };
+      $("#wSolve", v).onclick = () => { P.solved = !P.solved; renderPractice(); };
+      $("#wClear", v).onclick = () => { resetExercise(); renderPractice(); };
+    }
+  }
   /** Colouring drill: the student paints part by part — the letter, its shadda, sukun, fatha, damma, kasra,
       each stroke of a tanween — and each part is graded on its own. */
   function renderPaint(v, S) {
@@ -1083,7 +1163,7 @@
     }
     const opts = META.surahs.map((s) => `<option value="${s.n}"${s.n === P.surah ? " selected" : ""}>${AR(s.n)} · ${esc(s.ar)}</option>`).join("");
     const aopts = S.ayahs.map((a, i) => `<option value="${i}"${i === P.ai ? " selected" : ""}>${AR(a.a)}</option>`).join("");
-    v.innerHTML = `<h2 class="page-title">التمارين</h2>${kindSeg()}
+    v.innerHTML = `${surahHead(P.surah)}${surahTabs(P.kind || "time")}
       <p class="lead">اختر لوناً ثم اضغط على الجزء الذي تريد تلوينه: الحرف نفسه، أو الشدّة، أو السكون، أو الفتحة، أو الضمّة، أو الكسرة، أو إحدى علامتي التنوين. كل جزء يُلوَّن ويُصحَّح وحده. اضغط الجزء مرة ثانية باللون نفسه لإزالته.</p>
       <div class="bar">
         <div class="field"><label for="pS">السورة</label><select id="pS">${opts}</select></div>
@@ -1095,8 +1175,8 @@
       <div class="ayah-show paint" id="pAyah" style="font-size:${P.psize || 56}px">${line}</div>
       <div class="bar"><button class="btn primary" id="ptCheck">تحقّق</button><button class="btn" id="ptSolve">${P.solved ? "عُد إلى تلويني" : "اعرض الحل"}</button><button class="btn" id="ptClear">امسح الكل</button></div>
       ${result}`;
-    bindKindSeg(v);
-    $("#pS", v).onchange = (e) => { P.surah = +e.target.value; P.ai = 0; resetExercise(); renderPractice(); };
+    bindSurahTabs(v);
+    $("#pS", v).onchange = (e) => { P.surah = +e.target.value; ui.surah = P.surah; LS.set("surah", ui.surah); P.ai = 0; resetExercise(); renderPractice(); };
     $("#pA", v).onchange = (e) => { P.ai = +e.target.value; resetExercise(); renderPractice(); };
     $("#pPrev", v).onclick = () => { if (P.ai > 0) { P.ai--; resetExercise(); renderPractice(); } };
     $("#pNext", v).onclick = () => { if (P.ai < S.ayahs.length - 1) { P.ai++; resetExercise(); renderPractice(); } };
@@ -1126,6 +1206,7 @@
     const ay = S.ayahs[P.ai];
     const an = analyze(S, P.ai);
     if (P.kind === "paint") return renderPaint(v, S);
+    if (P.kind === "wasl") return renderWasl(v, S);
     const nunKind = P.kind === "nun";
     const cols = nunKind ? T.NUN_RULES.map((r) => ({ id: r.id, name: r.name, cat: r.cat, vis: ["ghunna", "bayni", "idgham"] })) : tableCols();
     const opts = META.surahs.map((s) => `<option value="${s.n}"${s.n === P.surah ? " selected" : ""}>${AR(s.n)} · ${esc(s.ar)}</option>`).join("");
@@ -1177,8 +1258,7 @@
       result = `<div class="result"><b>النتيجة: ${AR(right)} من ${AR(total)} صحيحة${wrong ? `، و${AR(wrong)} في غير موضعها` : ""}.</b>
         ${missing.length ? `<div class="missing">لم تضعها بعد: ${missing.map(({ c, wi }) => `<span class="chip small" style="--dot:var(--c-${c.cat || c.id})"><span class="dot"></span>${esc(plain(ay.w[wi][0]))} ← ${esc(c.name)}</span>`).join("")}</div>` : `<div>أحسنت، أكملت الجدول.</div>`}</div>`;
     }
-    v.innerHTML = `<h2 class="page-title">التمارين</h2>
-      ${kindSeg()}
+    v.innerHTML = `${surahHead(P.surah)}${surahTabs(P.kind || "time")}
       <p class="lead">${nunKind ? "جدول أحكام النون الساكنة والتنوين والميم الساكنة: ضع كل كلمة في عمود حكمها. القراءة موصولة عبر رؤوس الآي، والنون والميم المشدّدتان لا تُسألان." : "كل كلمة تظهر في عمود كل حكم فيها، ملوّنةً بذلك الحكم وحده. في وضع «تمرين» اختر كلمة ثم اضغط على العمود المناسب."}</p>
       <div class="bar">
         <div class="field"><label for="pS">السورة</label><select id="pS">${opts}</select></div>
@@ -1190,8 +1270,8 @@
       ${P.mode === "exercise" ? `<div class="bar"><button class="btn primary" id="pCheck">تحقّق</button><button class="btn" id="pClear">إفراغ الجدول</button><span style="font-size:13px;color:var(--muted)">${P.picked != null ? "اختر العمود لهذه الكلمة" : "اختر كلمة من الآية"}</span></div>` : ""}
       ${result}
       <div class="ptable-wrap"><table class="ptable"><thead><tr>${cols.map((c) => `<th style="--hc:var(--c-${c.cat || c.id})">${esc(c.name)}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table></div>`;
-    bindKindSeg(v);
-    $("#pS", v).onchange = (e) => { P.surah = +e.target.value; P.ai = 0; resetExercise(); renderPractice(); };
+    bindSurahTabs(v);
+    $("#pS", v).onchange = (e) => { P.surah = +e.target.value; ui.surah = P.surah; LS.set("surah", ui.surah); P.ai = 0; resetExercise(); renderPractice(); };
     $("#pA", v).onchange = (e) => { P.ai = +e.target.value; resetExercise(); renderPractice(); };
     $$("#pMode button", v).forEach((b) => (b.onclick = () => { P.mode = b.dataset.m; resetExercise(); renderPractice(); }));
     $("#pPrev", v).onclick = () => { if (P.ai > 0) { P.ai--; resetExercise(); renderPractice(); } };
@@ -1489,8 +1569,8 @@
       if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
       if (GH.get()) { CAN_EDIT = true; $("#adminLink").hidden = false; setTopH(); }
       if (CAN_EDIT && LS.get("welcome", 0)) { LS.del("welcome"); toast("مرحباً بك شيخنا. تمّ تفعيل أدوات الشيخ على هذا الجهاز.", 6000); }
-      const r = (location.hash || "#mushaf").slice(1);
-      if (r === "admin" || r === "about" || (CAN_EDIT && (r === "mushaf" || !ROUTES.includes(r)))) route();
+      const r = (location.hash || "#home").slice(1);
+      if (r === "admin" || r === "about" || (CAN_EDIT && r === "mushaf")) route();
     });
     cap("user").then(async (u) => {
       if (!u) return;

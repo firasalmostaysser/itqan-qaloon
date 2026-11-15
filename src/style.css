@@ -246,3 +246,27 @@ textarea { width: 100%; resize: vertical; }
   .view:not(#v-mushaf) { display: none !important; } .mushaf { font-size: 22pt; }
   .w, .ae { break-inside: avoid; } * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* Home and surah tabs */
+.sgrid { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); margin-bottom: 18px; }
+.sgrid.one { grid-template-columns: minmax(0, 320px); }
+.scard { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: center; text-align: start; background: var(--page); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.scard:hover { border-color: var(--gold); }
+.scard .snum { grid-row: span 2; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--zitouna-soft); color: var(--zitouna); font-size: 13px; font-variant-numeric: tabular-nums; }
+.scard .sname { font-family: var(--f-display); font-size: 17px; color: var(--zitouna); }
+.scount { color: var(--muted); font-size: 12.5px; }
+h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); font-size: 18px; margin: 4px 0 10px; }
+.allsurahs summary { cursor: pointer; color: var(--zitouna); padding: 8px 0 12px; }
+.shead { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin-bottom: 10px; }
+.stabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 calc(-1 * max(16px, env(safe-area-inset-left, 0px))) 12px; padding-inline: max(16px, env(safe-area-inset-left, 0px)); }
+.stabs::-webkit-scrollbar { display: none; }
+.stabs button { flex: none; border: 1px solid var(--line); background: var(--page); border-radius: 999px; padding: 7px 14px; color: var(--muted); }
+.stabs button[aria-pressed="true"] { background: var(--zitouna); color: var(--on-accent); border-color: var(--zitouna); }
+/* Hamzat al-wasl drill */
+.wforms { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }
+.wform { display: grid; justify-items: center; gap: 2px; background: var(--page); border: 1px solid var(--line); border-radius: 12px; padding: 6px 4px 8px; font-size: 12px; color: var(--muted); line-height: 1.5; }
+.wform[aria-pressed="true"] { border-color: var(--zitouna); box-shadow: 0 0 0 2px var(--zitouna); }
+.wform .wf-g { font-size: 44px; line-height: 0; }
+.qw use.k-pick { fill: var(--gold); } .qw use.k-ok { fill: var(--ok); } .qw use.k-bad { fill: var(--danger); }
+@media print { .shead, .stabs { display: none !important; } }
+.shead a.btn { color: var(--zitouna); }

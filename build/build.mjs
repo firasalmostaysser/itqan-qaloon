@@ -91,6 +91,11 @@ for (const s of surahs) {
 const BASMALA = "بِسْمِ اِ۬للَّهِ اِ۬لرَّحْمَٰنِ اِ۬لرَّحِيمِ";
 const basmala = BASMALA.split(" ").map((w) => { const [adv, g] = shape(w); return [w, adv, g]; });
 
+// Hamzat al-wasl drill: the plain alif and the six marked forms (sign above / below / middle × begun with fatha / kasra).
+const plainAlif = shape("ا");
+const waslForms = {};
+for (const h of ["\u064E", "\u0650", "\u064F"]) for (const d of ["\u06EC", "\u06EA"]) waslForms[h + d] = shape("ا" + h + d);
+
 // Tanween glyphs are split into their two strokes so each can take its own colour:
 // A = the stroke next to the letter (its haraka), B = the other one (the tanween's noon).
 // The kasra + small-meem ligature is split the same way (A = kasra, B = the meem of iqlab).
@@ -151,6 +156,6 @@ const pct = (arr, p) => arr[Math.min(arr.length - 1, Math.floor(arr.length * p))
 yMax = pct(tops, 0.999); yMin = pct(bottoms, 0.001);
 
 fs.writeFileSync(`${OUT}/glyphs.json`, JSON.stringify({ upem: UPEM, yMax, yMin, g: glyphs }));
-fs.writeFileSync(`${OUT}/meta.json`, JSON.stringify({ surahs, basmala, upem: UPEM, yMax, yMin }));
+fs.writeFileSync(`${OUT}/meta.json`, JSON.stringify({ surahs, basmala, plainAlif, waslForms, upem: UPEM, yMax, yMin }));
 console.log("split glyphs:", [...splitKind].map(([g, k]) => g + ":" + k + (glyphs[g].length > 5 ? "" : "(one piece)")).join(" "));
 console.log({ surahs: surahs.length, totalWords, unique: cache.size, glyphs: used.size, UPEM, yMax, yMin, maxTop: tops.at(-1), minBottom: bottoms[0] });
