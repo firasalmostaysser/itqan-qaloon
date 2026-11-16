@@ -180,7 +180,7 @@
   const MARK_RE = /[\u064B-\u065F\u0670\u06D6-\u06ED\u0654\u0655\u200F]/;
   const covCache = new Map();
   const TAN_CH = "\u064B\u064C\u064D\u0657\u065E\u0656\u08F0\u08F1\u08F2", IQ_CH = "\u06E2\u06ED";
-  const WASL_RE = /^ا[\u064E\u064F\u0650]?[\u06EC\u06EA\u06DF]/;
+  const WASL_RE = /^ا[\u064E\u064F\u0650][\u06EC\u06EA\u06DF]/;
   let WASL_ALT = null;
   let HIT = false; // when true, glyphs carry their character index so a tap can find the letter
   function coverage(text, g) {
@@ -1125,9 +1125,9 @@
   const kindSeg = () => `<div class="seg" id="pKind" style="margin-bottom:10px;flex-wrap:wrap">${KINDS.map(([k, l]) => `<button data-k="${k}" aria-pressed="${(P.kind || "time") === k}">${l}</button>`).join("")}</div>`;
   function bindKindSeg(v) { $$("#pKind button", v).forEach((b) => (b.onclick = () => { P.kind = b.dataset.k; resetExercise(); renderPractice(); })); }
   /** Hamzat al-wasl drill: every marked wasl alif is drawn plain; the student gives each one of the six forms. */
-  const WASL_LABEL = { "": "بلا صلة", "\u064E": "بعد فتح", "\u0650": "بعد كسر", "\u064F": "بعد ضمّ", "\u06EC": "يُبدأ بالفتح", "\u06EA": "يُبدأ بالكسر", "\u06DF": "يُبدأ بالضمّ" };
+  const WASL_LABEL = { "\u064E": "بعد فتح", "\u0650": "بعد كسر", "\u064F": "بعد ضمّ", "\u06EC": "يُبدأ بالفتح", "\u06EA": "يُبدأ بالكسر", "\u06DF": "يُبدأ بالضمّ" };
   const waslKey = (text) => text.match(WASL_RE)[0].slice(1);
-  const waslLabel = (k) => `${WASL_LABEL[k.length > 1 ? k[0] : ""]}<br>${WASL_LABEL[k[k.length - 1]]}`;
+  const waslLabel = (k) => `${WASL_LABEL[k[0]]}<br>${WASL_LABEL[k[1]]}`;
   function renderWasl(v, S) {
     const ay = S.ayahs[P.ai];
     P.wasl = P.wasl || {};
@@ -1150,8 +1150,9 @@
     v.innerHTML = `${surahHead(P.surah)}${surahTabs("wasl")}
       <p class="lead">كل همزة وصل مرسومة هنا ألفاً مجرّدة. اختر الكلمة ثم اختر شكل همزتها.</p>
       <details class="waslref" open><summary>منظومة ضبط همزة الوصل</summary>
-        <p><b>الصلة (الجرّة)</b> تدلّ على سقوط الهمزة في الوصل، وموضعها بحسب حركة الحرف الذي قبلها: <b>فوق</b> الألف بعد الفتح، <b>تحتها</b> بعد الكسر، <b>في وسطها</b> بعد الضمّ. ولا صلة إن لم تسبقها حركة (بعد ساكن أو تنوين أو مدّ).</p>
+        <p><b>الصلة (الجرّة)</b> تدلّ على سقوط الهمزة في الوصل، وموضعها بحسب حركة الحرف الذي قبلها: <b>فوق</b> الألف بعد الفتح، <b>تحتها</b> بعد الكسر، <b>في وسطها</b> بعد الضمّ. وبعد حرف المدّ تتبع حركة ما قبله (فِي الأرض: تحت)، وبعد التنوين تكون تحت الألف لأنه يُكسر لالتقاء الساكنين، أو في وسطها إن ضُمّ (مثل: مُتَشَٰبِهٍ انظُروا)، وفي أول الآية تتبع آخر الآية التي قبلها.</p>
         <p><b>نقطة الابتداء</b> تدلّ على حركة الهمزة إذا بدأتَ بالكلمة: <b>فوق</b> الألف = فتح (همزة «ال» التعريف)، <b>تحتها</b> = كسر، <b>في وسطها</b> = ضمّ (الفعل الذي ثالثه مضموم ضمّاً لازماً).</p>
+        <p>تنبيه: الألف التي عليها نقطة وحدها، أو نقطة بعدها حركة (مثل: يَشَآءُ إلى، شُهَدَآءَ إذ)، ليست همزة وصل، بل همزة قطع مسهّلة أو مبدلة عند قالون.</p>
       </details>
       <div class="bar">
         <div class="field"><label for="pS">السورة</label><select id="pS">${opts}</select></div>

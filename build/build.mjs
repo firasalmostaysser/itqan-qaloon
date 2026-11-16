@@ -35,7 +35,7 @@ function shape(text) {
   for (const feats of FEATURE_SETS) { r = shapeWith(text, feats); if (!mergesLetters(text, r.clusters)) break; fi++; }
   // Hamzat al-wasl: the alif with its sila stroke and ibtida dot is one composite glyph that the font only
   // builds with its default features. An alif never joins the next letter, so shape it apart and append it.
-  const wp = fi > 0 && text.match(/^\u0627[\u064E\u064F\u0650]?[\u06EC\u06EA\u06DF]/);
+  const wp = fi > 0 && text.match(/^\u0627[\u064E\u064F\u0650][\u06EC\u06EA\u06DF]/);
   if (wp && wp[0].length < text.length) {
     const head = shapeWith(wp[0], []), n = wp[0].length;
     if (head.out[1].length === 4) {
@@ -108,7 +108,7 @@ const basmala = BASMALA.split(" ").map((w) => { const [adv, g] = shape(w); retur
 // Hamzat al-wasl drill: the plain alif and the six marked forms (sign above / below / middle × begun with fatha / kasra).
 const plainAlif = shape("ا");
 const waslForms = {};
-for (const h of ["", "\u064E", "\u0650", "\u064F"]) for (const d of ["\u06EC", "\u06EA", "\u06DF"]) waslForms[h + d] = shape("ا" + h + d);
+for (const h of ["\u064E", "\u0650", "\u064F"]) for (const d of ["\u06EC", "\u06EA", "\u06DF"]) waslForms[h + d] = shape("ا" + h + d);
 
 // Tanween glyphs are split into their two strokes so each can take its own colour:
 // A = the stroke next to the letter (its haraka), B = the other one (the tanween's noon).

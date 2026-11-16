@@ -128,6 +128,17 @@
     const U = w.units;
     U.forEach((u, k) => {
       const prev = U[k - 1], next = U[k + 1];
+      // An alif with a dot at the head of a word is a hamzat al-wasl only when the sila stroke (written like a haraka)
+      // comes before the dot. A dot alone, or a dot followed by a haraka, marks the second of two hamzas meeting
+      // across two words, which Qaloon eases or substitutes: that one is pronounced.
+      if (k === 0 && u.L === "ا" && (u.dot || u.zero) && !u.sukun) {
+        const dm = u.dot || u.zero;
+        if (!u.vowelMark || dm.i < u.vowelMark.i) {
+          u.role = "tashil"; u.L = "ء"; u.easedHead = true;
+          if (!u.vowel) u.vowel = dm.t === "dot" ? "a" : dm.t === "dot2" ? "i" : "u";
+          return;
+        }
+      }
       if (u.ch === "ٱ" || (k === 0 && u.L === "ا" && (u.dot || u.zero || (u.vowelMark && !u.sukun)))) { u.role = "wasl"; return; }
       if (u.L === "ا") {
         if (u.sukun || u.zero) { u.role = "zaid"; return; }
@@ -292,7 +303,7 @@
         if (u.role === "silentWasl") { add(w, u.b, "wasl", "ألف وصل لا تُنطق في الوصل"); return; }
         if (u.role === "zaid") { add(w, u.b, "zaid", "حرف يُكتب ولا يُنطق"); u.marks.forEach((m) => add(w, m.i, "zaid", "علامة على حرف لا يُنطق")); return; }
         if (u.role === "lamShams") { add(w, u.b, "lam_shamsiya", "لام مدغمة في الحرف بعدها لا تُنطق"); return; }
-        if (u.role === "tashil") { add(w, u.b, "tashil", "همزة مسهّلة بين الهمزة والألف"); addMark(w, u.dot, "tashil", "علامة التسهيل"); u.marks.filter((m) => m !== u.dot).forEach((m) => VOW[m.t] && add(w, m.i, "harakat", "إتمام الحركة")); return; }
+        if (u.role === "tashil") { add(w, u.b, "tashil", u.easedHead ? (u.vowelMark ? "همزة ثانية بعد همزة تخالفها في الحركة: تُبدل أو تُسهَّل (قالون)، وليست همزة وصل" : "همزة ثانية مسهّلة بين بين (قالون)، وليست همزة وصل") : "همزة مسهّلة بين الهمزة والألف"); addMark(w, u.dot || u.zero, "tashil", "علامة التسهيل أو الإبدال"); u.marks.filter((m) => m !== u.dot).forEach((m) => VOW[m.t] && add(w, m.i, "harakat", "إتمام الحركة")); return; }
 
         const cls = classOf(L, S);
         const isNM = L === "ن" || L === "م";
