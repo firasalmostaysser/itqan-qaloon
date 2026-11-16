@@ -135,7 +135,7 @@ textarea { width: 100%; resize: vertical; }
 @media (min-width: 1000px) { .sheet { inset: 84px auto 16px 16px; width: 440px; border-radius: 14px; max-height: none; } .scrim.soft { background: transparent; pointer-events: none; } }
 .sheet-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .sheet-head h3 { margin: 0; font-size: 14px; color: var(--muted); font-weight: 500; flex: 1; }
-.bigword { display: flex; justify-content: center; font-size: clamp(64px, 18vw, 104px); padding: 6px 0 10px; }
+.bigword { display: flex; justify-content: center; font-size: clamp(84px, 24vw, 140px); padding: 6px 0 10px; }
 .section { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 12px; display: grid; gap: 10px; }
 .section h4 { margin: 0; font-size: 13px; color: var(--muted); font-weight: 600; letter-spacing: .2px; }
 .units { display: grid; gap: 8px; }
@@ -302,6 +302,46 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
 .remote { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 0 0 16px; background: var(--page); }
 .remote p { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
 .kv textarea { width: 100%; font: inherit; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--page); color: inherit; }
+
+/* attempts, exam, follow-up */
+.btn.exam.on { background: var(--danger); color: #fff; border-color: var(--danger); }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }
+.stats > div { background: var(--page); border: 1px solid var(--line); border-radius: 12px; padding: 10px; text-align: center; }
+.stats b { display: block; font-size: 22px; font-family: var(--f-display); }
+.stats span { font-size: 12px; color: var(--muted); }
+.focus { display: grid; gap: 6px; }
+.focus > div { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; background: var(--page); border: 1px solid var(--line); border-inline-start: 4px solid var(--danger); border-radius: 8px; padding: 8px 10px; font-size: 14px; }
+.focus span { color: var(--muted); font-size: 12px; }
+.focus i { font-style: normal; margin-inline-start: auto; font-size: 12.5px; white-space: nowrap; }
+.fwords { font-size: 13px; line-height: 2.4; }
+.atable { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+.atable th, .atable td { padding: 7px 8px; border-bottom: 1px solid var(--line); text-align: start; white-space: nowrap; }
+.atable th { color: var(--muted); font-weight: 500; }
+.badge { background: var(--danger); color: #fff; border-radius: 6px; padding: 0 6px; font-size: 11px; }
+.stud { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin: 8px 0; background: var(--page); }
+.stud summary { cursor: pointer; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+.stud summary span { font-size: 12.5px; color: var(--muted); }
+.stud h4 { margin: 14px 0 6px; font-size: 14px; }
+
+/* tour, learning path */
+.tour { position: fixed; z-index: 40; inset: auto 12px 12px 12px; margin: 0 auto; max-width: 520px; background: var(--page); border-radius: 16px; box-shadow: var(--shadow); padding: 16px 18px; border: 1px solid var(--line); }
+@media (min-width: 700px) { .tour { inset: 50% auto auto 50%; transform: translate(-50%, -50%); width: 520px; } }
+.tour h3 { margin: 10px 0 6px; font-family: var(--f-display); color: var(--zitouna); }
+.tour p { margin: 0 0 14px; line-height: 1.9; }
+.tour-dots { display: flex; gap: 5px; }
+.tour-dots i { width: 18px; height: 4px; border-radius: 2px; background: var(--line); }
+.tour-dots i.on { background: var(--zitouna); }
+.path { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 0 0 16px; background: var(--page); }
+.path ol { margin: 0 0 10px; padding-inline-start: 22px; display: grid; gap: 4px; font-size: 13.5px; color: var(--muted); }
+.path ol b { color: var(--ink, inherit); margin-inline-end: 6px; }
+.stabs .stepn { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: rgba(127,127,127,.18); font-size: 11px; margin-inline-end: 6px; }
+.stabs .done { margin-inline-start: 6px; font-size: 11px; opacity: .8; }
+.stabs .done.ok { color: var(--ok); font-weight: 700; opacity: 1; }
+.stabs button[aria-pressed="true"] .done.ok { color: #fff; }
+.sdone { color: var(--ok); }
+.scard.alldone { border-color: var(--ok); }
+.path ol { list-style: arabic-indic; }
+.path a.btn { color: inherit; text-decoration: none; }
 </style>
 <style id="catvars"></style>
 <svg id="ggrads" width="0" height="0" style="position:absolute" aria-hidden="true"></svg>
@@ -316,7 +356,7 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
         <span><h1>الطريق إلى الإتقان</h1><small>تلاوة برواية قالون · الشيخ المقرئ محمّد بن عبد الله جوّاد</small></span>
       </a>
       <nav class="nav" aria-label="الأقسام">
-        <a href="#home">السور</a><a href="#mushaf">المصحف</a><a href="#lessons">مراحل الدرس</a><a href="#practice">التمارين</a><a id="liveLink" target="_blank" rel="noopener" hidden>● الحصة المباشرة</a><a href="#about">عن الطريقة</a><a href="#admin" class="admin-link" id="adminLink" hidden>لوحة الشيخ</a>
+        <a href="#home">السور</a><a href="#mushaf">المصحف</a><a href="#lessons">مراحل الدرس</a><a href="#practice">التمارين</a><a href="#progress">نتائجي</a><a href="#students" id="studentsLink" hidden>الطلاب</a><a id="liveLink" target="_blank" rel="noopener" hidden>● الحصة المباشرة</a><a href="#about">عن الطريقة</a><a href="#admin" class="admin-link" id="adminLink" hidden>لوحة الشيخ</a>
       </nav>
     </div>
   </header>
@@ -325,6 +365,8 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
     <section class="view" id="v-mushaf" hidden></section>
     <section class="view" id="v-lessons" hidden></section>
     <section class="view" id="v-practice" hidden></section>
+    <section class="view" id="v-progress" hidden></section>
+    <section class="view" id="v-students" hidden></section>
     <section class="view" id="v-about" hidden></section>
     <section class="view" id="v-admin" hidden></section>
   </main>
@@ -1103,10 +1145,12 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
     t.textContent = msg; t.hidden = false;
     clearTimeout(toast.t); toast.t = setTimeout(() => (t.hidden = true), ms || 3800);
   }
-  const ROUTES = ["home", "mushaf", "lessons", "practice", "about", "admin"];
+  const ROUTES = ["home", "mushaf", "lessons", "practice", "progress", "students", "about", "admin"];
   function route() {
+    if ((location.hash || "").startsWith("#r=")) { importReport(); return; }
     let r = (location.hash || "#home").slice(1);
     if (!ROUTES.includes(r)) r = "home";
+    const sl = $("#studentsLink"); if (sl) sl.hidden = !CAN_EDIT && !Object.keys(LS.get("reports", {})).length;
     if (r === "admin" && !CAN_EDIT) r = "admin";
     for (const v of $$(".view")) v.hidden = v.id !== "v-" + r;
     for (const a of $$(".nav a")) a.setAttribute("aria-current", a.getAttribute("href") === "#" + r ? "page" : "false");
@@ -1115,6 +1159,8 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
     else if (r === "mushaf") renderMushaf();
     else if (r === "lessons") renderLessons();
     else if (r === "practice") renderPractice();
+    else if (r === "progress") renderProgress();
+    else if (r === "students") renderStudents();
     else if (r === "about") renderAbout();
     else if (r === "admin") renderAdmin();
     window.scrollTo(0, 0);
@@ -1124,18 +1170,27 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
 
   /* ---------------- home: the surahs, and the tabs of one surah ---------------- */
   function renderHome() {
-    const card = (s) => `<button class="scard" data-s="${s.n}"><span class="snum">${AR(s.n)}</span><span class="sname">${esc(s.ar)}</span><span class="scount">${AR(s.count)} ${s.count > 10 ? "آية" : "آيات"}</span></button>`;
+    const best = bestScores(), doneOf = (n) => DRILLS.filter((k) => (best.get(n + "|" + k) || 0) >= 80).length;
+    const card = (s) => `<button class="scard${doneOf(s.n) === 4 ? " alldone" : ""}" data-s="${s.n}"><span class="snum">${AR(s.n)}</span><span class="sname">${esc(s.ar)}</span><span class="scount">${AR(s.count)} ${s.count > 10 ? "آية" : "آيات"}${doneOf(s.n) ? ` · <b class="sdone">✓ ${AR(doneOf(s.n))}/٤</b>` : ""}</span></button>`;
+    const last = LS.get("attempts", []).slice(-1)[0], cont = last ? META.surahs[last.s - 1] : null;
     const juz = META.surahs.filter((s) => s.n >= 78), rest = META.surahs.filter((s) => s.n > 1 && s.n < 78);
     $("#v-home").innerHTML = `<div class="hero"><h2 class="page-title">دورة الطريق إلى الإتقان</h2>
       <p class="lead">بطريقة الشيخ المقرئ محمّد بن عبد الله جوّاد · برواية قالون عن نافع. اختر سورة لترى القواعد عليها وتمارينها: التلوين، وأزمنة الحروف، وأحكام الميم والنون الساكنتين، وهمزة الوصل.</p></div>
       ${lessonLinks().length ? `<div class="remote"><h3 class="sec" style="margin-top:0">الدروس عن بُعد مع الشيخ</h3><div class="bar">${lessonLinks().map((l) => `<a class="btn primary" target="_blank" rel="noopener" href="${esc(l.url)}">${l.icon} ${esc(l.label)}</a>`).join("")}</div><p>افتح المصحف الملوّن هنا وشاركه على الشاشة أثناء الحصة. ولتسميع تلاوتك خارج الحصة: سجّلها من صفحة السورة ثم أرسلها إلى الشيخ.</p></div>` : ""}
+      <div class="path"><h3 class="sec" style="margin-top:0">طريقك في كل سورة</h3>
+        <ol><li><b>القواعد على السورة</b>اقرأ السورة ملوّنة، واضغط الكلمة لتكبيرها وسماع نطق الشيخ.</li><li><b>التلوين</b>لوّن الحروف والحركات بنفسك.</li><li><b>أزمنة الحروف</b>ضع كل كلمة في عمود حكمها.</li><li><b>الميم والنون</b>أحكام النون الساكنة والتنوين والميم.</li><li><b>همزة الوصل</b>اختر شكل كل همزة وصل.</li><li><b>الامتحان</b>أعد التمارين في «وضع الامتحان»، ثم أرسل نتائجك إلى الشيخ من «نتائجي».</li></ol>
+        <div class="bar">${cont ? `<button class="btn primary" data-s="${cont.n}">تابع: سورة ${esc(cont.ar)}</button>` : ""}<button class="btn" id="tourBtn">جولة تعريفية</button><a class="btn" href="#progress">نتائجي</a></div></div>
       <div class="sgrid one">${card(META.surahs[0])}</div>
       <h3 class="sec">جزء عمّ</h3><div class="sgrid">${juz.map(card).join("")}</div>
       <details class="allsurahs"><summary>باقي سور القرآن</summary><div class="sgrid">${rest.map(card).join("")}</div></details>`;
+    $("#tourBtn").onclick = () => startTour(CAN_EDIT ? "cheikh" : "student");
     $$("#v-home [data-s]").forEach((b) => (b.onclick = () => { ui.surah = +b.dataset.s; LS.set("surah", ui.surah); ui.lesson = null; LS.set("lesson", null); location.hash = "#mushaf"; }));
   }
   const STABS = [["show", "القواعد على السورة"], ["paint", "التلوين"], ["time", "أزمنة الحروف"], ["nun", "الميم والنون"], ["wasl", "همزة الوصل"]];
-  const surahTabs = (active) => `<div class="stabs" id="stabs">${STABS.map(([k, l]) => `<button data-st="${k}" aria-pressed="${active === k}">${l}</button>`).join("")}</div>`;
+  /** Best score per surah and drill, from the attempts kept on this device: "surah|kind" → percent. */
+  function bestScores() { const m = new Map(); for (const a of LS.get("attempts", [])) { if (!a.n) continue; const k = a.s + "|" + a.k, pc = Math.round((a.r / a.n) * 100) - (a.x ? 1 : 0); if (!m.has(k) || m.get(k) < pc) m.set(k, pc); } return m; }
+  const DRILLS = ["paint", "time", "nun", "wasl"];
+  const surahTabs = (active) => { const b = bestScores(), n = location.hash === "#practice" ? P.surah : ui.surah; return `<div class="stabs" id="stabs">${STABS.map(([k, l], i) => { const pc = b.get(n + "|" + k); return `<button data-st="${k}" aria-pressed="${active === k}"><span class="stepn">${AR(i + 1)}</span>${l}${pc != null ? `<span class="done${pc >= 80 ? " ok" : ""}">${pc >= 80 ? "✓" : AR(Math.max(0, pc)) + "٪"}</span>` : ""}</button>`; }).join("")}</div>`; };
   function bindSurahTabs(root) {
     $$("#stabs button", root).forEach((b) => (b.onclick = () => {
       const k = b.dataset.st;
@@ -1146,6 +1201,48 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
     }));
   }
   const surahHead = (n) => `<div class="shead"><a class="btn ghost" href="#home">→ السور</a><h2 class="page-title" style="margin:0">سورة ${esc(META.surahs[n - 1].ar)}</h2><span class="scount">${AR(META.surahs[n - 1].count)} آية · رواية قالون عن نافع</span></div>`;
+
+  /* ---------------- product tour ---------------- */
+  const TOURS = {
+    student: [
+      ["مرحباً بك في «الطريق إلى الإتقان»", "تتعلّم هنا تلاوة القرآن برواية قالون بطريقة الألوان للشيخ محمّد بن عبد الله جوّاد. الجولة ستّ خطوات قصيرة."],
+      ["١ · اختر سورة", "من صفحة «السور» اختر سورة. تُفتح ملوّنةً: كل لون حكم، ومفتاح الألوان فوق المصحف، وتستطيع إخفاء أي لون للمراجعة."],
+      ["٢ · اضغط على الكلمة", "تكبر الكلمة وتظهر أحكام كل حرف فيها، ويُعرض فيديو الشيخ وهو ينطقها إن كان قد سجّلها. «شاشة كاملة» تعرضها بحجم أكبر مع التكرار."],
+      ["٣ · تمرّن", "لكل سورة أربعة تمارين مرتّبة: التلوين، أزمنة الحروف، الميم والنون، همزة الوصل. القاعدة مكتوبة عند كل خانة. تتمرّن على السورة كلها أو آية آية."],
+      ["٤ · امتحن نفسك", "اضغط «وضع الامتحان» في أي تمرين: لا يُعرض الحل، والتسليم مرة واحدة. علامة ✓ تظهر على التمرين إذا بلغت ٨٠٪."],
+      ["٥ · أرسل نتائجك إلى الشيخ", "في «نتائجي» ترى محاولاتك وما تحتاج التركيز عليه. اكتب اسمك واضغط «أرسل نتائجي إلى الشيخ» ليصله رابط عبر تيليغرام أو واتساب."],
+      ["٦ · الدروس والتسجيل", "روابط حصص الشيخ عن بُعد تظهر في صفحة «السور». ومن صفحة السورة تسجّل تلاوتك بصوتك ثم تسمعها أو ترسلها."],
+    ],
+    cheikh: [
+      ["مرحباً بك شيخنا", "هذه جولة قصيرة في أدواتك. كل ما تغيّره يصل إلى الطلاب بعد الضغط على «حفظ ونشر للطلاب»."],
+      ["١ · الألوان والأحكام", "في «لوحة الشيخ» تغيّر اسم كل حكم وشرحه ولونه وترتيبه، وتضيف حكماً جديداً."],
+      ["٢ · تصحيح كلمة", "افتح المصحف واضغط أي كلمة: يظهر لك محرّر تغيّر به لون أي حرف أو حركة، لهذا الموضع وحده أو لكل مواضع الكلمة."],
+      ["٣ · تسجيل النطق", "من الكلمة نفسها اضغط «تسجيل نطق الكلمة بالكاميرا» وسجّل مباشرة. يراه الطالب حين يضغط الكلمة."],
+      ["٤ · الدروس عن بُعد", "في «ضوابط المحرّك» ضع روابط Google Meet أو Zoom أو تيليغرام، سطراً لكل رابط، فتظهر أزراراً للطلاب."],
+      ["٥ · متابعة الطلاب", "يرسل لك الطالب رابط نتائجه. افتحه على هذا الجهاز فيُحفظ في صفحة «الطلاب»: محاولاته، امتحاناته، وما يجب التركيز عليه، والأخطاء المشتركة بين الطلاب."],
+    ],
+  };
+  function startTour(kind) {
+    const steps = TOURS[kind] || TOURS.student; let i = 0;
+    const root = $("#stageRoot");
+    const draw = () => {
+      root.innerHTML = `<div class="scrim" data-x></div><section class="tour" role="dialog" aria-label="جولة تعريفية">
+        <div class="tour-dots">${steps.map((_, j) => `<i class="${j === i ? "on" : ""}"></i>`).join("")}</div>
+        <h3>${esc(steps[i][0])}</h3><p>${esc(steps[i][1])}</p>
+        <div class="bar"><button class="btn ghost" data-x>تخطَّ</button><span class="grow"></span>${i ? `<button class="btn" id="tPrev">السابق</button>` : ""}<button class="btn primary" id="tNext">${i === steps.length - 1 ? "ابدأ" : "التالي"}</button></div></section>`;
+      $$("[data-x]", root).forEach((b) => (b.onclick = end));
+      if (i) $("#tPrev", root).onclick = () => { i--; draw(); };
+      $("#tNext", root).onclick = () => { if (i === steps.length - 1) end(); else { i++; draw(); } };
+      $("#tNext", root).focus();
+    };
+    const end = () => { root.innerHTML = ""; LS.set("tour:" + kind, 1); };
+    draw();
+  }
+  function maybeTour() {
+    if ((location.hash || "").length > 1 && !/^#(home|mushaf)$/.test(location.hash)) return;
+    if (CAN_EDIT) { if (!LS.get("tour:cheikh", 0)) startTour("cheikh"); }
+    else if (!LS.get("tour:student", 0)) startTour("student");
+  }
 
   /* ---------------- legend ---------------- */
   function legendHTML() {
@@ -1392,6 +1489,7 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
     const video = $("#wv", root);
     let loop = false, rate = 1;
     if (video) {
+      if (!SHEET.played) { SHEET.played = true; try { playMedia(video, media, false); } catch (e) { /* the play button remains */ } }
       $("#wPlay", root).onclick = () => { video.playbackRate = rate; playMedia(video, media, loop); };
       $("#wLoop", root).onclick = (e) => { loop = !loop; e.currentTarget.setAttribute("aria-pressed", loop); if (loop) { video.playbackRate = rate; playMedia(video, media, true); } };
       $$("#wRate button", root).forEach((b) => (b.onclick = () => { rate = +b.dataset.r; video.playbackRate = rate; $$("#wRate button", root).forEach((x) => x.setAttribute("aria-pressed", x === b)); }));
@@ -1941,7 +2039,7 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
   }
 
   /* ---------------- practice: tables and the colouring drill ---------------- */
-  function resetExercise() { P.picked = null; P.placed = {}; P.checked = false; P.paint = {}; P.solved = false; P.wasl = {}; P.wPick = null; }
+  function resetExercise() { P.picked = null; P.placed = {}; P.checked = false; P.paint = {}; P.solved = false; P.wasl = {}; P.wPick = null; P.locked = false; P.fresh = false; }
   const KINDS = [["time", "أزمنة الحروف"], ["nun", "النون الساكنة والتنوين والميم"], ["paint", "التلوين"]];
   const kindSeg = () => `<div class="seg" id="pKind" style="margin-bottom:10px;flex-wrap:wrap">${KINDS.map(([k, l]) => `<button data-k="${k}" aria-pressed="${(P.kind || "time") === k}">${l}</button>`).join("")}</div>`;
   function bindKindSeg(v) { $$("#pKind button", v).forEach((b) => (b.onclick = () => { P.kind = b.dataset.k; resetExercise(); renderPractice(); })); }
@@ -1955,6 +2053,131 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
   }
   const ayahOpts = (S) => `<option value="-1"${P.ai < 0 ? " selected" : ""}>السورة كلها</option>` + S.ayahs.map((a, i) => `<option value="${i}"${i === P.ai ? " selected" : ""}>${AR(a.a)}</option>`).join("");
   const ovOf = (S, it) => ovFor(S.n, it.ay.a, it.wi, it.wd[0]);
+  /* ---------------- attempts, exam and follow-up ----------------
+     No server: every check is logged on the student's device; he sends the cheikh a link that carries
+     his results, and the cheikh's device keeps the reports it opened and adds up the common mistakes. */
+  const KIND_LABEL = { time: "أزمنة الحروف", nun: "الميم والنون", paint: "التلوين", wasl: "همزة الوصل" };
+  function ruleLabel(kind, id) {
+    if (!id) return "";
+    if (kind === "wasl") return "همزة الوصل: " + waslLabel(id).replace("<br>", "، ");
+    const n = T.NUN_RULES.find((r) => r.id === id);
+    return n ? n.name : (CATMAP.get(id) || { name: id }).name;
+  }
+  function logAttempt(kind, S, key, right, total, wrong, errs) {
+    if (!P.fresh) return;
+    P.fresh = false;
+    const agg = new Map();
+    for (const [w, exp, got] of errs) { const k = w + "|" + (exp || "") + "|" + (got || ""); agg.set(k, (agg.get(k) || 0) + 1); }
+    const e = [...agg].sort((a, b) => b[1] - a[1]).slice(0, 40).map(([k, c]) => { const [w, exp, got] = k.split("|"); return [w, exp, got, c]; });
+    const A = LS.get("attempts", []);
+    A.push({ t: Date.now(), k: kind, s: S.n, a: key, r: right, n: total, x: wrong, ex: P.exam ? 1 : 0, e });
+    LS.set("attempts", A.slice(-200));
+    if (P.exam) P.locked = true;
+  }
+  const examBtn = () => `<button class="btn exam${P.exam ? " on" : ""}" id="pExam" aria-pressed="${!!P.exam}" title="في الامتحان لا يُعرض الحل، والتسليم مرة واحدة، والنتيجة تُسجَّل في «نتائجي»">📝 ${P.exam ? "أنت في امتحان" : "وضع الامتحان"}</button>`;
+  function bindExam(v) { const b = $("#pExam", v); if (b) b.onclick = () => { P.exam = !P.exam; if (P.exam) P.mode = "exercise"; resetExercise(); renderPractice(); }; }
+  const examNote = () => (P.exam && P.locked ? `<div style="margin-top:6px">سُجّل الامتحان. تجده في «نتائجي» ومنه ترسله إلى الشيخ.</div>` : "");
+  /** Mistakes added up: by rule (what was expected, or what was wrongly given) and by word. */
+  function errStats(rows) { // rows: [kind, word, exp, got, count]
+    const rules = new Map(), words = new Map();
+    for (const [kind, w, exp, got, c] of rows) {
+      const rk = kind + "|" + (exp || got);
+      rules.set(rk, (rules.get(rk) || 0) + c);
+      const pw = plain(w); words.set(pw, (words.get(pw) || 0) + c);
+    }
+    const top = (m, n) => [...m].sort((a, b) => b[1] - a[1]).slice(0, n);
+    return { rules: top(rules, 8).map(([k, c]) => { const [kind, id] = k.split("|"); return { label: ruleLabel(kind, id), kind, c }; }), words: top(words, 10) };
+  }
+  const focusHTML = (st) => (st.rules.length ? `<div class="focus">${st.rules.map((r) => `<div><b>${esc(r.label)}</b><span>${esc(KIND_LABEL[r.kind] || "")}</span><i>${AR(r.c)} خطأ</i></div>`).join("")}</div>
+    ${st.words.length ? `<p class="fwords">أكثر الكلمات خطأً: ${st.words.map(([w, c]) => `<span class="chip small">${esc(w)} · ${AR(c)}</span>`).join(" ")}</p>` : ""}` : `<p class="empty">لا أخطاء مسجّلة بعد.</p>`);
+  const attemptRow = (a) => `<tr><td>${new Date(a.t).toLocaleDateString("ar")}</td><td>${esc((META.surahs[a.s - 1] || {}).ar || "")}${a.a === "all" ? "" : " · " + AR(a.a)}</td><td>${esc(KIND_LABEL[a.k] || a.k)}${a.ex ? ` <span class="badge">امتحان</span>` : ""}</td><td><b>${AR(a.r)} / ${AR(a.n)}</b>${a.x ? ` <small>(${AR(a.x)} خطأ)</small>` : ""}</td><td>${a.n ? AR(Math.round((a.r / a.n) * 100)) + "٪" : "—"}</td></tr>`;
+  const attemptsTable = (A) => `<div class="ptable-wrap"><table class="atable"><thead><tr><th>التاريخ</th><th>السورة</th><th>التمرين</th><th>الصحيح</th><th>النسبة</th></tr></thead><tbody>${A.slice().reverse().map(attemptRow).join("")}</tbody></table></div>`;
+  const rowsOf = (A) => A.flatMap((a) => (a.e || []).map((e) => [a.k, e[0], e[1], e[2], e[3] || 1]));
+  const bytesB64 = (u8) => { let s = ""; for (const b of u8) s += String.fromCharCode(b); return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); };
+  const b64Bytes = (b) => { b = b.replace(/-/g, "+").replace(/_/g, "/"); while (b.length % 4) b += "="; return Uint8Array.from(atob(b), (c) => c.charCodeAt(0)); };
+  async function pipe(u8, T2) { return new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(new T2("deflate-raw"))).arrayBuffer()); }
+  async function reportLink() {
+    const A = LS.get("attempts", []), st = LS.get("student", {});
+    if (!st.id) { st.id = Math.random().toString(36).slice(2, 10); LS.set("student", st); }
+    const agg = new Map();
+    for (const [k, w, exp, got, c] of rowsOf(A)) { const key = [k, w, exp, got].join("|"); agg.set(key, (agg.get(key) || 0) + c); }
+    const E = [...agg].sort((a, b) => b[1] - a[1]).slice(0, 45).map(([k, c]) => k.split("|").concat(c));
+    const rep = { v: 1, id: st.id, n: st.name || "", t: Date.now(), A: A.slice(-40).map((a) => [a.t, a.k, a.s, a.a, a.r, a.n, a.x, a.ex]), E };
+    const raw = new TextEncoder().encode(JSON.stringify(rep));
+    let data = "0" + bytesB64(raw);
+    try { if (window.CompressionStream) data = "1" + bytesB64(await pipe(raw, CompressionStream)); } catch (e) { /* keep plain */ }
+    return location.origin + location.pathname + "#r=" + data;
+  }
+  async function importReport() {
+    const h = location.hash.slice(3);
+    try {
+      let u8 = b64Bytes(h.slice(1));
+      if (h[0] === "1") u8 = await pipe(u8, DecompressionStream);
+      const j = JSON.parse(new TextDecoder().decode(u8));
+      if (!j || !j.id || !Array.isArray(j.A)) throw new Error("bad");
+      const R = LS.get("reports", {});
+      R[j.id] = { id: j.id, n: String(j.n || "طالب").slice(0, 60), t: j.t, A: j.A.map((a) => ({ t: a[0], k: a[1], s: a[2], a: a[3], r: a[4], n: a[5], x: a[6], ex: a[7] })), E: (j.E || []).map((e) => [e[0], e[1], e[2], e[3], +e[4] || 1]) };
+      LS.set("reports", R);
+      ui.student = j.id;
+      toast("وصلت نتائج " + R[j.id].n + " وحُفظت على هذا الجهاز.");
+    } catch (e) { toast("رابط النتائج غير صالح أو ناقص."); }
+    history.replaceState(null, "", location.pathname + location.search + "#students");
+    route();
+  }
+  function renderProgress() {
+    const v = $("#v-progress"), A = LS.get("attempts", []), st = LS.get("student", {});
+    const exams = A.filter((a) => a.ex), tot = A.reduce((s, a) => s + a.n, 0), ok = A.reduce((s, a) => s + a.r, 0);
+    v.innerHTML = `<h2 class="page-title">نتائجي</h2>
+      <p class="lead">كل مرة تضغط «تحقّق» في تمرين تُسجَّل محاولتك هنا على جهازك. أرسل نتائجك إلى الشيخ برابط واحد ليرى محاولاتك وامتحاناتك وما تحتاج التركيز عليه.</p>
+      <div class="bar"><div class="field"><label for="stName">اسمك</label><input type="text" id="stName" value="${esc(st.name || "")}" placeholder="الاسم واللقب"></div>
+        <button class="btn primary" id="stSend"${A.length ? "" : " disabled"}>📤 أرسل نتائجي إلى الشيخ</button><button class="btn" id="stCopy"${A.length ? "" : " disabled"}>انسخ الرابط</button></div>
+      <div class="stats"><div><b>${AR(A.length)}</b><span>محاولة</span></div><div><b>${AR(exams.length)}</b><span>امتحان</span></div><div><b>${tot ? AR(Math.round((ok / tot) * 100)) + "٪" : "—"}</b><span>نسبة الصواب</span></div></div>
+      <h3 class="sec">ما تحتاج التركيز عليه</h3>${focusHTML(errStats(rowsOf(A)))}
+      <h3 class="sec">محاولاتي</h3>${A.length ? attemptsTable(A) : `<p class="empty">لم تُجرِ أي تمرين بعد. افتح سورة ثم اختر تمريناً، وللامتحان اضغط «وضع الامتحان».</p>`}
+      ${A.length ? `<p><button class="linkbtn" id="stClear">امسح سجلّي من هذا الجهاز</button></p>` : ""}`;
+    $("#stName", v).onchange = (e) => { const s = LS.get("student", {}); s.name = e.target.value.trim(); LS.set("student", s); };
+    const need = () => { if (!(LS.get("student", {}).name || "").trim()) { toast("اكتب اسمك أولاً ليعرفك الشيخ."); $("#stName", v).focus(); return false; } return true; };
+    $("#stSend", v).onclick = async () => {
+      if (!need()) return;
+      const url = await reportLink(), text = `نتائجي في «الطريق إلى الإتقان» — ${LS.get("student", {}).name}`;
+      if (navigator.share) { try { await navigator.share({ title: text, text, url }); return; } catch (e) { if (e && e.name === "AbortError") return; } }
+      try { await navigator.clipboard.writeText(url); toast("نُسخ الرابط. ألصقه في رسالة إلى الشيخ."); } catch (e) { prompt("انسخ الرابط وأرسله إلى الشيخ:", url); }
+    };
+    $("#stCopy", v).onclick = async () => { if (!need()) return; const url = await reportLink(); try { await navigator.clipboard.writeText(url); toast("نُسخ الرابط. ألصقه في رسالة إلى الشيخ."); } catch (e) { prompt("انسخ الرابط:", url); } };
+    const cl = $("#stClear", v); if (cl) cl.onclick = () => { if (cl.dataset.sure) { LS.del("attempts"); renderProgress(); } else { cl.dataset.sure = 1; cl.textContent = "اضغط مرة أخرى للتأكيد: سيُمسح السجلّ كله"; } };
+  }
+  function renderStudents() {
+    const v = $("#v-students"), R = LS.get("reports", {}), list = Object.values(R).sort((a, b) => b.t - a.t);
+    $("#studentsLink").hidden = !list.length && !CAN_EDIT;
+    if (!list.length) { v.innerHTML = `<h2 class="page-title">متابعة الطلاب</h2><p class="lead">لم تصلك نتائج بعد. يفتح الطالب صفحة «نتائجي» ويضغط «أرسل نتائجي إلى الشيخ»، فيصلك رابط في تيليغرام أو واتساب. افتح الرابط على هذا الجهاز فتُحفظ نتائجه هنا.</p>`; return; }
+    // common mistakes: a rule counts once per student who erred in it
+    const who = new Map(), cnt = new Map(), wordWho = new Map();
+    for (const r of list) {
+      const seen = new Set(), seenW = new Set();
+      for (const [kind, w, exp, got, c] of r.E) {
+        const rk = kind + "|" + (exp || got); cnt.set(rk, (cnt.get(rk) || 0) + c);
+        if (!seen.has(rk)) { seen.add(rk); who.set(rk, (who.get(rk) || 0) + 1); }
+        const pw = plain(w); if (!seenW.has(pw)) { seenW.add(pw); wordWho.set(pw, (wordWho.get(pw) || 0) + 1); }
+      }
+    }
+    const common = [...who].sort((a, b) => b[1] - a[1] || cnt.get(b[0]) - cnt.get(a[0])).slice(0, 8);
+    const cwords = [...wordWho].sort((a, b) => b[1] - a[1]).slice(0, 12);
+    const card = (r) => {
+      const tot = r.A.reduce((s, a) => s + a.n, 0), ok = r.A.reduce((s, a) => s + a.r, 0), exams = r.A.filter((a) => a.ex);
+      return `<details class="stud"${ui.student === r.id || list.length === 1 ? " open" : ""}><summary><b>${esc(r.n)}</b><span>${AR(r.A.length)} محاولة · ${AR(exams.length)} امتحان · ${tot ? AR(Math.round((ok / tot) * 100)) + "٪" : "—"} · آخر إرسال ${new Date(r.t).toLocaleDateString("ar")}</span></summary>
+        <h4>ما يحتاج التركيز عليه</h4>${focusHTML(errStats(r.E))}
+        ${exams.length ? `<h4>امتحاناته</h4>${attemptsTable(exams)}` : ""}
+        <h4>كل محاولاته</h4>${attemptsTable(r.A)}
+        <p><button class="linkbtn" data-del="${esc(r.id)}">احذف نتائج هذا الطالب من جهازي</button></p></details>`;
+    };
+    v.innerHTML = `<h2 class="page-title">متابعة الطلاب</h2>
+      <p class="lead">${list.length === 1 ? "طالب واحد أرسل نتائجه" : list.length === 2 ? "طالبان أرسلا نتائجهما" : AR(list.length) + (list.length > 10 ? " طالباً" : " طلاب") + " أرسلوا نتائجهم"}. النتائج محفوظة على هذا الجهاز فقط، ولا تُنشر على الموقع.</p>
+      <h3 class="sec">الأخطاء المشتركة: ما يجب التركيز عليه في الدرس</h3>
+      ${common.length ? `<div class="focus">${common.map(([k, n]) => { const [kind, id] = k.split("|"); return `<div><b>${esc(ruleLabel(kind, id))}</b><span>${esc(KIND_LABEL[kind] || "")}</span><i>${AR(n)} من ${AR(list.length)} · ${AR(cnt.get(k))} خطأ</i></div>`; }).join("")}</div>
+      <p class="fwords">كلمات أخطأ فيها أكثر من طالب: ${cwords.map(([w, n]) => `<span class="chip small">${esc(w)} · ${AR(n)}</span>`).join(" ")}</p>` : `<p class="empty">لا أخطاء مسجّلة.</p>`}
+      <h3 class="sec">الطلاب</h3>${list.map(card).join("")}`;
+    $$("[data-del]", v).forEach((b) => (b.onclick = () => { if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = "اضغط مرة أخرى للتأكيد"; return; } const R2 = LS.get("reports", {}); delete R2[b.dataset.del]; LS.set("reports", R2); renderStudents(); }));
+  }
   /** Hamzat al-wasl drill: every marked wasl alif is drawn plain; the student gives each one of the six forms. */
   const WASL_LABEL = { "\u064E": "بعد فتح", "\u0650": "بعد كسر", "\u064F": "بعد ضمّ", "\u06EC": "يُبدأ بالفتح", "\u06EA": "يُبدأ بالكسر", "\u06DF": "يُبدأ بالضمّ" };
   const waslKey = (text) => text.match(WASL_RE)[0].slice(1);
@@ -1973,7 +2196,9 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
     let result = "";
     if (P.checked) {
       const right = targets.filter((t) => P.wasl[t.wi] === keyOf(t.wd)).length;
-      result = `<div class="result"><b>${right === targets.length ? "أحسنت! كل همزات الوصل صحيحة." : `الصحيح ${AR(right)} من ${AR(targets.length)}.`}</b></div>`;
+      const bad = targets.filter((t) => P.wasl[t.wi] !== keyOf(t.wd));
+      logAttempt("wasl", S, sc.key, right, targets.length, bad.filter((t) => P.wasl[t.wi]).length, bad.map((t) => [t.wd[0], keyOf(t.wd), P.wasl[t.wi] || ""]));
+      result = `<div class="result"><b>${right === targets.length ? "أحسنت! كل همزات الوصل صحيحة." : `الصحيح ${AR(right)} من ${AR(targets.length)}.`}</b>${examNote()}</div>`;
     }
     const opts = META.surahs.map((s) => `<option value="${s.n}"${s.n === P.surah ? " selected" : ""}>${AR(s.n)} · ${esc(s.ar)}</option>`).join("");
     const aopts = ayahOpts(S);
@@ -1991,7 +2216,7 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
       </div>
       <div class="ayah-show pool" id="pAyah" style="font-size:44px">${line}</div>
       ${targets.length ? `<div class="wforms">${forms}</div>
-      <div class="bar"><button class="btn primary" id="wCheck">تحقّق</button><button class="btn" id="wSolve">${P.solved ? "عُد إلى إجاباتي" : "اعرض الحل"}</button><button class="btn" id="wClear">امسح الكل</button></div>` : `<p class="empty">لا توجد هنا همزة وصل معلَّمة. انتقل إلى آية أخرى.</p>`}
+      <div class="bar"><button class="btn primary" id="wCheck"${P.locked ? " disabled" : ""}>${P.exam ? "سلّم الامتحان" : "تحقّق"}</button>${P.exam && !P.locked ? "" : `<button class="btn" id="wSolve">${P.solved ? "عُد إلى إجاباتي" : "اعرض الحل"}</button>`}<button class="btn" id="wClear">${P.locked ? "امتحان جديد" : "امسح الكل"}</button>${examBtn()}</div>` : `<p class="empty">لا توجد هنا همزة وصل معلَّمة. انتقل إلى آية أخرى.</p>`}
       ${result}`;
     bindSurahTabs(v);
     $("#pS", v).onchange = (e) => { P.surah = +e.target.value; ui.surah = P.surah; LS.set("surah", ui.surah); P.ai = defAi(P.surah); resetExercise(); renderPractice(); };
@@ -1999,10 +2224,11 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
     $("#pPrev", v).onclick = () => { if (P.ai >= 0) { P.ai--; resetExercise(); renderPractice(); } };
     $("#pNext", v).onclick = () => { if (P.ai < S.ayahs.length - 1) { P.ai++; resetExercise(); renderPractice(); } };
     $$("[data-ww]", v).forEach((b) => (b.onclick = () => { P.wPick = +b.dataset.ww; renderPractice(); }));
-    $$("[data-wf]", v).forEach((b) => (b.onclick = () => { if (P.wPick == null) return; P.wasl[P.wPick] = b.dataset.wf; P.checked = false; P.solved = false; const nx = targets.find((t) => !P.wasl[t.wi]); if (nx) P.wPick = nx.wi; renderPractice(); }));
+    $$("[data-wf]", v).forEach((b) => (b.onclick = () => { if (P.wPick == null || P.locked) return; P.wasl[P.wPick] = b.dataset.wf; P.checked = false; P.solved = false; const nx = targets.find((t) => !P.wasl[t.wi]); if (nx) P.wPick = nx.wi; renderPractice(); }));
     if (targets.length) {
-      $("#wCheck", v).onclick = () => { P.checked = true; P.solved = false; renderPractice(); };
-      $("#wSolve", v).onclick = () => { P.solved = !P.solved; renderPractice(); };
+      $("#wCheck", v).onclick = () => { P.checked = true; P.solved = false; P.fresh = true; renderPractice(); };
+      if ($("#wSolve", v)) $("#wSolve", v).onclick = () => { P.solved = !P.solved; renderPractice(); };
+      bindExam(v);
       $("#wClear", v).onclick = () => { resetExercise(); renderPractice(); };
     }
   }
@@ -2028,8 +2254,12 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
       for (const key in P.paint) expected.get(key) === P.paint[key] ? right++ : wrong++;
       const missing = [...expected.keys()].filter((k) => !(k in P.paint)).length;
       const per = brushes.map((b) => { const need = [...expected.values()].filter((x) => x === b.id).length, got = Object.keys(P.paint).filter((k) => P.paint[k] === b.id && expected.get(k) === b.id).length; return need ? `<span class="chip small" style="--dot:var(--c-${b.id})"><span class="dot"></span>${esc(b.name)} ${AR(got)}/${AR(need)}</span>` : ""; }).join("");
+      const wordOf = (key) => sc.by.get(+key.slice(0, key.indexOf(":"))).wd[0], errs = [];
+      for (const [key, cat] of expected) if (P.paint[key] !== cat) errs.push([wordOf(key), cat, P.paint[key] || ""]);
+      for (const key in P.paint) if (!expected.has(key)) errs.push([wordOf(key), "", P.paint[key]]);
+      logAttempt("paint", S, sc.key, right, expected.size, wrong, errs);
       const sc0 = LS.get("scores", {}); sc0[`paint:${S.n}:${sc.key}`] = { right, total: expected.size, wrong, at: Date.now() }; LS.set("scores", sc0);
-      result = `<div class="result"><b>${missing === 0 && wrong === 0 ? "أحسنت! التلوين صحيح كله." : `الصحيح ${AR(right)} من ${AR(expected.size)}${wrong ? `، وفي غير موضعه أو بغير لونه ${AR(wrong)}` : ""}${missing ? `، وبقي ${AR(missing)}` : ""}.`}</b><div class="missing" style="margin-top:6px">${per}</div></div>`;
+      result = `<div class="result"><b>${missing === 0 && wrong === 0 ? "أحسنت! التلوين صحيح كله." : `الصحيح ${AR(right)} من ${AR(expected.size)}${wrong ? `، وفي غير موضعه أو بغير لونه ${AR(wrong)}` : ""}${missing ? `، وبقي ${AR(missing)}` : ""}.`}</b><div class="missing" style="margin-top:6px">${per}</div>${examNote()}</div>`;
     }
     const opts = META.surahs.map((s) => `<option value="${s.n}"${s.n === P.surah ? " selected" : ""}>${AR(s.n)} · ${esc(s.ar)}</option>`).join("");
     const aopts = ayahOpts(S);
@@ -2044,7 +2274,7 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
       <div class="legend" style="position:static">${brushes.map((b) => `<button class="chip brush${P.brush === b.id ? " on" : ""}" data-brush="${b.id}" style="--dot:var(--c-${b.id})"><span class="dot"></span>${esc(b.name)}</button>`).join("")}<button class="chip brush${P.brush === "__erase" ? " on" : ""}" data-brush="__erase" style="--dot:transparent"><span class="dot"></span>ممحاة</button></div>
       <div class="rulekey">${brushes.map((b) => `<div class="${P.brush === b.id ? "on" : ""}"><span class="dot" style="--dot:var(--c-${b.id})"></span><b>${esc(b.name)}</b><span>${esc(b.short || "")}</span></div>`).join("")}</div>
       <div class="ayah-show paint" id="pAyah" style="font-size:${P.psize || 56}px">${line}</div>
-      <div class="bar"><button class="btn primary" id="ptCheck">تحقّق</button><button class="btn" id="ptSolve">${P.solved ? "عُد إلى تلويني" : "اعرض الحل"}</button><button class="btn" id="ptClear">امسح الكل</button></div>
+      <div class="bar"><button class="btn primary" id="ptCheck"${P.locked ? " disabled" : ""}>${P.exam ? "سلّم الامتحان" : "تحقّق"}</button>${P.exam && !P.locked ? "" : `<button class="btn" id="ptSolve">${P.solved ? "عُد إلى تلويني" : "اعرض الحل"}</button>`}<button class="btn" id="ptClear">${P.locked ? "امتحان جديد" : "امسح الكل"}</button>${examBtn()}</div>
       ${result}`;
     bindSurahTabs(v);
     $("#pS", v).onchange = (e) => { P.surah = +e.target.value; ui.surah = P.surah; LS.set("surah", ui.surah); P.ai = defAi(P.surah); resetExercise(); renderPractice(); };
@@ -2055,7 +2285,7 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
     $("#ptPlus", v).onclick = () => { P.psize = Math.min(120, (P.psize || 56) + 8); renderPractice(); };
     $$("[data-brush]", v).forEach((b) => (b.onclick = () => { P.brush = b.dataset.brush; renderPractice(); }));
     $("#pAyah", v).onclick = (e) => {
-      if (P.solved) return;
+      if (P.solved || P.locked) return;
       const use = e.target.closest("use[data-c]"), wEl = e.target.closest(".paintw");
       if (!use || !wEl) return;
       const wi = +wEl.dataset.wi, w = sc.by.get(wi).an, c = +use.dataset.c;
@@ -2065,9 +2295,10 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
       if (P.brush === "__erase" || P.paint[key] === P.brush) delete P.paint[key]; else P.paint[key] = P.brush;
       P.checked = false; renderPractice();
     };
-    $("#ptCheck", v).onclick = () => { P.checked = true; P.solved = false; renderPractice(); };
-    $("#ptSolve", v).onclick = () => { P.solved = !P.solved; renderPractice(); };
-    $("#ptClear", v).onclick = () => { P.paint = {}; P.checked = false; P.solved = false; renderPractice(); };
+    $("#ptCheck", v).onclick = () => { P.checked = true; P.solved = false; P.fresh = true; renderPractice(); };
+    if ($("#ptSolve", v)) $("#ptSolve", v).onclick = () => { P.solved = !P.solved; renderPractice(); };
+    $("#ptClear", v).onclick = () => { resetExercise(); renderPractice(); };
+    bindExam(v);
   }
   async function renderPractice() {
     const v = $("#v-practice");
@@ -2077,6 +2308,7 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
     if (P.kind === "paint") return renderPaint(v, S);
     if (P.kind === "wasl") return renderWasl(v, S);
     const nunKind = P.kind === "nun";
+    if (P.exam) P.mode = "exercise";
     const cols = nunKind ? T.NUN_RULES.map((r) => ({ id: r.id, name: r.name, cat: r.cat, short: r.short, vis: ["ghunna", "bayni", "idgham"] })) : tableCols();
     const opts = META.surahs.map((s) => `<option value="${s.n}"${s.n === P.surah ? " selected" : ""}>${AR(s.n)} · ${esc(s.ar)}</option>`).join("");
     const aopts = ayahOpts(S);
@@ -2124,23 +2356,27 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
         for (const wi of set) answer[c.id].has(wi) ? right++ : wrong++;
         for (const wi of answer[c.id]) if (!set.has(wi)) missing.push({ c, wi });
       }
+      const errs = missing.map(({ c, wi }) => [W(wi).wd[0], c.id, ""]);
+      for (const c of cols) for (const wi of P.placed[c.id] || []) if (!answer[c.id].has(wi)) errs.push([W(wi).wd[0], (cols.find((c2) => answer[c2.id].has(wi)) || {}).id || "", c.id]);
+      logAttempt(nunKind ? "nun" : "time", S, sc.key, right, total, wrong, errs);
       const sc0 = LS.get("scores", {}); sc0[`${S.n}:${sc.key}`] = { right, total, wrong, at: Date.now() }; LS.set("scores", sc0);
       result = `<div class="result"><b>النتيجة: ${AR(right)} من ${AR(total)} صحيحة${wrong ? `، و${AR(wrong)} في غير موضعها` : ""}.</b>
-        ${missing.length ? `<div class="missing">لم تضعها بعد: ${missing.map(({ c, wi }) => `<span class="chip small" style="--dot:var(--c-${c.cat || c.id})"><span class="dot"></span>${esc(plain(W(wi).wd[0]))} ← ${esc(c.name)}</span>`).join("")}</div>` : `<div>أحسنت، أكملت الجدول.</div>`}</div>`;
+        ${missing.length ? `<div class="missing">لم تضعها بعد: ${missing.map(({ c, wi }) => `<span class="chip small" style="--dot:var(--c-${c.cat || c.id})"><span class="dot"></span>${esc(plain(W(wi).wd[0]))} ← ${esc(c.name)}</span>`).join("")}</div>` : `<div>أحسنت، أكملت الجدول.</div>`}${examNote()}</div>`;
     }
     v.innerHTML = `${surahHead(P.surah)}${surahTabs(P.kind || "time")}
       <p class="lead">${nunKind ? "جدول أحكام النون الساكنة والتنوين والميم الساكنة: ضع كل كلمة في عمود حكمها. القراءة موصولة عبر رؤوس الآي، والنون والميم المشدّدتان لا تُسألان." : "كل كلمة تظهر في عمود كل حكم فيها، ملوّنةً بذلك الحكم وحده. في وضع «تمرين» اختر كلمة ثم اضغط على العمود المناسب."}</p>
       <div class="bar">
         <div class="field"><label for="pS">السورة</label><select id="pS">${opts}</select></div>
         <div class="field"><label for="pA">الآية</label><select id="pA">${aopts}</select></div>
-        <div class="seg" id="pMode"><button data-m="show" aria-pressed="${P.mode === "show"}">عرض</button><button data-m="exercise" aria-pressed="${P.mode === "exercise"}">تمرين</button></div>
+        ${P.exam ? "" : `<div class="seg" id="pMode"><button data-m="show" aria-pressed="${P.mode === "show"}">عرض</button><button data-m="exercise" aria-pressed="${P.mode === "exercise"}">تمرين</button></div>`}
+        ${examBtn()}
         <button class="iconbtn" id="pPrev" aria-label="الآية السابقة">›</button><button class="iconbtn" id="pNext" aria-label="الآية التالية">‹</button>
       </div>
       <div class="ayah-show ${P.mode === "exercise" ? "pool" : ""}" id="pAyah">${ayahLine}</div>
-      ${P.mode === "exercise" ? `<div class="bar"><button class="btn primary" id="pCheck">تحقّق</button><button class="btn" id="pClear">إفراغ الجدول</button><span style="font-size:13px;color:var(--muted)">${P.picked != null ? "اختر العمود لهذه الكلمة" : "اختر كلمة"}</span></div>` : ""}
+      ${P.mode === "exercise" ? `<div class="bar"><button class="btn primary" id="pCheck"${P.locked ? " disabled" : ""}>${P.exam ? "سلّم الامتحان" : "تحقّق"}</button><button class="btn" id="pClear">${P.locked ? "امتحان جديد" : "إفراغ الجدول"}</button><span style="font-size:13px;color:var(--muted)">${P.picked != null ? "اختر العمود لهذه الكلمة" : "اختر كلمة"}</span></div>` : ""}
       ${result}
       <div class="ptable-wrap"><table class="ptable"><thead><tr>${cols.map((c) => `<th style="--hc:var(--c-${c.cat || c.id})">${esc(c.name)}<small>${esc(c.short || (CATMAP.get(c.id) || {}).short || "")}</small></th>`).join("")}</tr></thead><tbody>${body}</tbody></table></div>`;
-    bindSurahTabs(v);
+    bindSurahTabs(v); bindExam(v);
     $("#pS", v).onchange = (e) => { P.surah = +e.target.value; ui.surah = P.surah; LS.set("surah", ui.surah); P.ai = defAi(P.surah); resetExercise(); renderPractice(); };
     $("#pA", v).onchange = (e) => { P.ai = +e.target.value; resetExercise(); renderPractice(); };
     $$("#pMode button", v).forEach((b) => (b.onclick = () => { P.mode = b.dataset.m; resetExercise(); renderPractice(); }));
@@ -2149,15 +2385,15 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
     if (P.mode === "show") {
       $$("[data-tw],[data-pw]", v).forEach((b) => (b.onclick = () => { const it = W(+(b.dataset.tw || b.dataset.pw)); openWord(S, it.ai, it.wi, "practice"); }));
     } else {
-      $$("[data-pw]", v).forEach((b) => { if (+b.dataset.pw === P.picked) b.classList.add("picked"); b.onclick = () => { P.picked = +b.dataset.pw === P.picked ? null : +b.dataset.pw; P.checked = false; renderPractice(); }; });
+      $$("[data-pw]", v).forEach((b) => { if (+b.dataset.pw === P.picked) b.classList.add("picked"); b.onclick = () => { if (P.locked) return; P.picked = +b.dataset.pw === P.picked ? null : +b.dataset.pw; P.checked = false; renderPractice(); }; });
       $$("[data-col]", v).forEach((td) => (td.onclick = (e) => {
-        if (e.target.closest("[data-unplace]")) return;
+        if (e.target.closest("[data-unplace]") || P.locked) return;
         if (P.picked == null) { toast("اختر كلمة من الآية أولاً."); return; }
         const set = P.placed[td.dataset.col] || (P.placed[td.dataset.col] = new Set());
         set.add(P.picked); P.checked = false; renderPractice();
       }));
-      $$("[data-unplace]", v).forEach((x) => (x.onclick = () => { const [c, wi] = x.dataset.unplace.split(":"); P.placed[c].delete(+wi); P.checked = false; renderPractice(); }));
-      $("#pCheck", v).onclick = () => { P.checked = true; renderPractice(); };
+      $$("[data-unplace]", v).forEach((x) => (x.onclick = () => { if (P.locked) return; const [c, wi] = x.dataset.unplace.split(":"); P.placed[c].delete(+wi); P.checked = false; renderPractice(); }));
+      $("#pCheck", v).onclick = () => { P.checked = true; P.fresh = true; renderPractice(); };
       $("#pClear", v).onclick = () => { resetExercise(); renderPractice(); };
     }
   }
@@ -2441,6 +2677,7 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
       if (CAN_EDIT && LS.get("welcome", 0)) { LS.del("welcome"); toast("مرحباً بك شيخنا. تمّ تفعيل أدوات الشيخ على هذا الجهاز.", 6000); }
       const r = (location.hash || "#home").slice(1);
       if (r === "admin" || r === "about" || (CAN_EDIT && r === "mushaf")) route();
+      setTimeout(maybeTour, 600);
     });
     cap("user").then(async (u) => {
       if (!u) return;

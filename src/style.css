@@ -119,7 +119,7 @@ textarea { width: 100%; resize: vertical; }
 @media (min-width: 1000px) { .sheet { inset: 84px auto 16px 16px; width: 440px; border-radius: 14px; max-height: none; } .scrim.soft { background: transparent; pointer-events: none; } }
 .sheet-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .sheet-head h3 { margin: 0; font-size: 14px; color: var(--muted); font-weight: 500; flex: 1; }
-.bigword { display: flex; justify-content: center; font-size: clamp(64px, 18vw, 104px); padding: 6px 0 10px; }
+.bigword { display: flex; justify-content: center; font-size: clamp(84px, 24vw, 140px); padding: 6px 0 10px; }
 .section { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 12px; display: grid; gap: 10px; }
 .section h4 { margin: 0; font-size: 13px; color: var(--muted); font-weight: 600; letter-spacing: .2px; }
 .units { display: grid; gap: 8px; }
@@ -286,3 +286,43 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
 .remote { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 0 0 16px; background: var(--page); }
 .remote p { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
 .kv textarea { width: 100%; font: inherit; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--page); color: inherit; }
+
+/* attempts, exam, follow-up */
+.btn.exam.on { background: var(--danger); color: #fff; border-color: var(--danger); }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }
+.stats > div { background: var(--page); border: 1px solid var(--line); border-radius: 12px; padding: 10px; text-align: center; }
+.stats b { display: block; font-size: 22px; font-family: var(--f-display); }
+.stats span { font-size: 12px; color: var(--muted); }
+.focus { display: grid; gap: 6px; }
+.focus > div { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; background: var(--page); border: 1px solid var(--line); border-inline-start: 4px solid var(--danger); border-radius: 8px; padding: 8px 10px; font-size: 14px; }
+.focus span { color: var(--muted); font-size: 12px; }
+.focus i { font-style: normal; margin-inline-start: auto; font-size: 12.5px; white-space: nowrap; }
+.fwords { font-size: 13px; line-height: 2.4; }
+.atable { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+.atable th, .atable td { padding: 7px 8px; border-bottom: 1px solid var(--line); text-align: start; white-space: nowrap; }
+.atable th { color: var(--muted); font-weight: 500; }
+.badge { background: var(--danger); color: #fff; border-radius: 6px; padding: 0 6px; font-size: 11px; }
+.stud { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin: 8px 0; background: var(--page); }
+.stud summary { cursor: pointer; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+.stud summary span { font-size: 12.5px; color: var(--muted); }
+.stud h4 { margin: 14px 0 6px; font-size: 14px; }
+
+/* tour, learning path */
+.tour { position: fixed; z-index: 40; inset: auto 12px 12px 12px; margin: 0 auto; max-width: 520px; background: var(--page); border-radius: 16px; box-shadow: var(--shadow); padding: 16px 18px; border: 1px solid var(--line); }
+@media (min-width: 700px) { .tour { inset: 50% auto auto 50%; transform: translate(-50%, -50%); width: 520px; } }
+.tour h3 { margin: 10px 0 6px; font-family: var(--f-display); color: var(--zitouna); }
+.tour p { margin: 0 0 14px; line-height: 1.9; }
+.tour-dots { display: flex; gap: 5px; }
+.tour-dots i { width: 18px; height: 4px; border-radius: 2px; background: var(--line); }
+.tour-dots i.on { background: var(--zitouna); }
+.path { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 0 0 16px; background: var(--page); }
+.path ol { margin: 0 0 10px; padding-inline-start: 22px; display: grid; gap: 4px; font-size: 13.5px; color: var(--muted); }
+.path ol b { color: var(--ink, inherit); margin-inline-end: 6px; }
+.stabs .stepn { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: rgba(127,127,127,.18); font-size: 11px; margin-inline-end: 6px; }
+.stabs .done { margin-inline-start: 6px; font-size: 11px; opacity: .8; }
+.stabs .done.ok { color: var(--ok); font-weight: 700; opacity: 1; }
+.stabs button[aria-pressed="true"] .done.ok { color: #fff; }
+.sdone { color: var(--ok); }
+.scard.alldone { border-color: var(--ok); }
+.path ol { list-style: arabic-indic; }
+.path a.btn { color: inherit; text-decoration: none; }
