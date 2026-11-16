@@ -63,10 +63,14 @@
   const IKHFA = "تثجدذزسشصضطظفقك";
   const IZHAR = "ءهعحغخ";
   const NUN_RULES = [
-    { id: "izhar", name: "الإظهار", cat: "bayni" }, { id: "idgham_ghunna", name: "الإدغام بغنّة", cat: "ghunna" },
-    { id: "idgham_bila", name: "الإدغام بلا غنّة", cat: "idgham" }, { id: "iqlab", name: "القلب", cat: "ghunna" },
-    { id: "ikhfa", name: "الإخفاء", cat: "ghunna" }, { id: "m_idgham", name: "إدغام الميم", cat: "ghunna" },
-    { id: "m_ikhfa", name: "إخفاء الميم", cat: "ghunna" }, { id: "m_izhar", name: "إظهار الميم", cat: "bayni" },
+    { id: "izhar", name: "الإظهار", cat: "bayni", short: "النون الساكنة أو التنوين قبل حروف الحلق (ء هـ ع ح غ خ): تُنطق النون ظاهرة." },
+    { id: "idgham_ghunna", name: "الإدغام بغنّة", cat: "ghunna", short: "قبل (ي ن م و) من كلمة أخرى: تُدغم النون مع غنّة." },
+    { id: "idgham_bila", name: "الإدغام بلا غنّة", cat: "idgham", short: "قبل اللام والراء: تُدغم النون إدغاماً كاملاً فلا تُنطق." },
+    { id: "iqlab", name: "القلب", cat: "ghunna", short: "قبل الباء: تُقلب النون ميماً مخفاة مع غنّة." },
+    { id: "ikhfa", name: "الإخفاء", cat: "ghunna", short: "قبل باقي الحروف الخمسة عشر: تُخفى النون مع غنّة." },
+    { id: "m_idgham", name: "إدغام الميم", cat: "ghunna", short: "ميم ساكنة قبل ميم: تُدغم فيها مع غنّة." },
+    { id: "m_ikhfa", name: "إخفاء الميم", cat: "ghunna", short: "ميم ساكنة قبل الباء: تُخفى مع غنّة." },
+    { id: "m_izhar", name: "إظهار الميم", cat: "bayni", short: "ميم ساكنة قبل باقي الحروف: تُنطق ظاهرة." },
   ];
   const LETTER_NAME = { "ء": "الهمزة", "ب": "الباء", "ت": "التاء", "ث": "الثاء", "ج": "الجيم", "ح": "الحاء", "خ": "الخاء", "د": "الدال",
     "ذ": "الذال", "ر": "الراء", "ز": "الزاي", "س": "السين", "ش": "الشين", "ص": "الصاد", "ض": "الضاد", "ط": "الطاء", "ظ": "الظاء",
@@ -276,7 +280,15 @@
 
       U.forEach((u, k) => {
         const L = u.L, name = LETTER_NAME[L] || L;
-        if (u.role === "wasl") { add(w, u.b, "wasl", "همزة وصل: تسقط في الوصل وتثبت عند الابتداء"); u.marks.forEach((m) => add(w, m.i, "wasl", "علامة ضبط همزة الوصل (ليست حركة تُنطق في الوصل)")); return; }
+        if (u.role === "wasl") {
+          const dm = u.marks.find((m) => m.t === "dot" || m.t === "dot2" || m.t === "zero"), sm = u.marks.find((m) => m.t === "fatha" || m.t === "kasra" || m.t === "damma");
+          const start = dm ? (dm.t === "dot" ? "مفتوحة" : dm.t === "dot2" ? "مكسورة" : "مضمومة") : null;
+          add(w, u.b, "wasl", "همزة وصل: تسقط في الوصل" + (start ? "، وإذا ابتدأتَ بها نطقتَها همزةً " + start : " وتثبت عند الابتداء"));
+          u.marks.forEach((m) => add(w, m.i, "wasl", m === dm ? "نقطة الابتداء: " + (m.t === "dot" ? "فوق الألف = يُبدأ بالفتح" : m.t === "dot2" ? "تحت الألف = يُبدأ بالكسر" : "وسط الألف = يُبدأ بالضمّ")
+            : m === sm ? "الصلة (جرّة): " + (m.t === "fatha" ? "فوق الألف لأن ما قبلها مفتوح" : m.t === "kasra" ? "تحت الألف لأن ما قبلها مكسور" : "وسط الألف لأن ما قبلها مضموم") + "، وليست حركة تُنطق"
+            : "علامة ضبط همزة الوصل"));
+          return;
+        }
         if (u.role === "silentWasl") { add(w, u.b, "wasl", "ألف وصل لا تُنطق في الوصل"); return; }
         if (u.role === "zaid") { add(w, u.b, "zaid", "حرف يُكتب ولا يُنطق"); u.marks.forEach((m) => add(w, m.i, "zaid", "علامة على حرف لا يُنطق")); return; }
         if (u.role === "lamShams") { add(w, u.b, "lam_shamsiya", "لام مدغمة في الحرف بعدها لا تُنطق"); return; }
@@ -438,16 +450,20 @@
     const rank = new Map(order.map((id, i) => [id, i]));
     const pick = (list, key) => {
       if (ov && Object.prototype.hasOwnProperty.call(ov, key)) return ov[key] || null;
-      let best = null, br = 1e9;
+      let best = null, br = 1e9, second = null, sr = 1e9;
       for (const c of list) {
-        if (c.cat === "__hide" || !visible.has(c.cat)) continue;
+        if (c.cat === "__hide" || !visible.has(c.cat) || c.cat === best || c.cat === second) continue;
         const r = rank.has(c.cat) ? rank.get(c.cat) : 500;
-        if (r < br) { br = r; best = c.cat; }
+        if (r < br) { second = best; sr = br; br = r; best = c.cat; }
+        else if (r < sr) { sr = r; second = c.cat; }
       }
+      if (key != null && second) alt[key] = second;
       if (list.some((c) => c.cat === "__hide") && visible.has("harakat")) return "__hide";
       return best;
     };
+    const alt = {}; // the next rule meeting on the same part, for the two-colour display
     const out = word.cand.map((list, i) => pick(list, i));
+    out.alt = alt;
     out.s2 = (word.cand2 || []).map((list, i) => pick(list, i + "b")); // second stroke of a tanween
     return out;
   }

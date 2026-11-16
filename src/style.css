@@ -270,3 +270,19 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
 .qw use.k-pick { fill: var(--gold); } .qw use.k-ok { fill: var(--ok); } .qw use.k-bad { fill: var(--danger); }
 @media print { .shead, .stabs { display: none !important; } }
 .shead a.btn { color: var(--zitouna); }
+
+/* rule text under table headers and beside the brushes */
+.ptable th small { display: block; font-family: var(--f-ui, inherit); font-weight: 400; font-size: 11.5px; line-height: 1.5; color: var(--muted); margin-top: 4px; white-space: normal; }
+.ptable th { vertical-align: top; }
+.rulekey { display: grid; gap: 4px; margin: 8px 0 12px; font-size: 13px; }
+.rulekey > div { display: flex; gap: 8px; align-items: baseline; padding: 4px 8px; border-radius: 8px; color: var(--muted); }
+.rulekey > div.on { background: var(--zitouna-soft); color: inherit; }
+.rulekey b { white-space: nowrap; color: var(--ink, inherit); }
+.rulekey .dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--dot); }
+.waslref { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; margin: 8px 0 12px; background: var(--page); }
+.waslref summary { cursor: pointer; font-family: var(--f-display); }
+.waslref p { font-size: 14px; margin: 8px 0; }
+.wforms.ref .wform { cursor: default; }
+.remote { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 0 0 16px; background: var(--page); }
+.remote p { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+.kv textarea { width: 100%; font: inherit; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--page); color: inherit; }

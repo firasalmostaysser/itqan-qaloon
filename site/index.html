@@ -286,8 +286,25 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
 .qw use.k-pick { fill: var(--gold); } .qw use.k-ok { fill: var(--ok); } .qw use.k-bad { fill: var(--danger); }
 @media print { .shead, .stabs { display: none !important; } }
 .shead a.btn { color: var(--zitouna); }
+
+/* rule text under table headers and beside the brushes */
+.ptable th small { display: block; font-family: var(--f-ui, inherit); font-weight: 400; font-size: 11.5px; line-height: 1.5; color: var(--muted); margin-top: 4px; white-space: normal; }
+.ptable th { vertical-align: top; }
+.rulekey { display: grid; gap: 4px; margin: 8px 0 12px; font-size: 13px; }
+.rulekey > div { display: flex; gap: 8px; align-items: baseline; padding: 4px 8px; border-radius: 8px; color: var(--muted); }
+.rulekey > div.on { background: var(--zitouna-soft); color: inherit; }
+.rulekey b { white-space: nowrap; color: var(--ink, inherit); }
+.rulekey .dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--dot); }
+.waslref { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; margin: 8px 0 12px; background: var(--page); }
+.waslref summary { cursor: pointer; font-family: var(--f-display); }
+.waslref p { font-size: 14px; margin: 8px 0; }
+.wforms.ref .wform { cursor: default; }
+.remote { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 0 0 16px; background: var(--page); }
+.remote p { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+.kv textarea { width: 100%; font: inherit; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--page); color: inherit; }
 </style>
 <style id="catvars"></style>
+<svg id="ggrads" width="0" height="0" style="position:absolute" aria-hidden="true"></svg>
 </head>
 <body>
 <svg id="gdefs" width="0" height="0" style="position:absolute" aria-hidden="true"></svg>
@@ -381,10 +398,14 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
   const IKHFA = "تثجدذزسشصضطظفقك";
   const IZHAR = "ءهعحغخ";
   const NUN_RULES = [
-    { id: "izhar", name: "الإظهار", cat: "bayni" }, { id: "idgham_ghunna", name: "الإدغام بغنّة", cat: "ghunna" },
-    { id: "idgham_bila", name: "الإدغام بلا غنّة", cat: "idgham" }, { id: "iqlab", name: "القلب", cat: "ghunna" },
-    { id: "ikhfa", name: "الإخفاء", cat: "ghunna" }, { id: "m_idgham", name: "إدغام الميم", cat: "ghunna" },
-    { id: "m_ikhfa", name: "إخفاء الميم", cat: "ghunna" }, { id: "m_izhar", name: "إظهار الميم", cat: "bayni" },
+    { id: "izhar", name: "الإظهار", cat: "bayni", short: "النون الساكنة أو التنوين قبل حروف الحلق (ء هـ ع ح غ خ): تُنطق النون ظاهرة." },
+    { id: "idgham_ghunna", name: "الإدغام بغنّة", cat: "ghunna", short: "قبل (ي ن م و) من كلمة أخرى: تُدغم النون مع غنّة." },
+    { id: "idgham_bila", name: "الإدغام بلا غنّة", cat: "idgham", short: "قبل اللام والراء: تُدغم النون إدغاماً كاملاً فلا تُنطق." },
+    { id: "iqlab", name: "القلب", cat: "ghunna", short: "قبل الباء: تُقلب النون ميماً مخفاة مع غنّة." },
+    { id: "ikhfa", name: "الإخفاء", cat: "ghunna", short: "قبل باقي الحروف الخمسة عشر: تُخفى النون مع غنّة." },
+    { id: "m_idgham", name: "إدغام الميم", cat: "ghunna", short: "ميم ساكنة قبل ميم: تُدغم فيها مع غنّة." },
+    { id: "m_ikhfa", name: "إخفاء الميم", cat: "ghunna", short: "ميم ساكنة قبل الباء: تُخفى مع غنّة." },
+    { id: "m_izhar", name: "إظهار الميم", cat: "bayni", short: "ميم ساكنة قبل باقي الحروف: تُنطق ظاهرة." },
   ];
   const LETTER_NAME = { "ء": "الهمزة", "ب": "الباء", "ت": "التاء", "ث": "الثاء", "ج": "الجيم", "ح": "الحاء", "خ": "الخاء", "د": "الدال",
     "ذ": "الذال", "ر": "الراء", "ز": "الزاي", "س": "السين", "ش": "الشين", "ص": "الصاد", "ض": "الضاد", "ط": "الطاء", "ظ": "الظاء",
@@ -594,7 +615,15 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
 
       U.forEach((u, k) => {
         const L = u.L, name = LETTER_NAME[L] || L;
-        if (u.role === "wasl") { add(w, u.b, "wasl", "همزة وصل: تسقط في الوصل وتثبت عند الابتداء"); u.marks.forEach((m) => add(w, m.i, "wasl", "علامة ضبط همزة الوصل (ليست حركة تُنطق في الوصل)")); return; }
+        if (u.role === "wasl") {
+          const dm = u.marks.find((m) => m.t === "dot" || m.t === "dot2" || m.t === "zero"), sm = u.marks.find((m) => m.t === "fatha" || m.t === "kasra" || m.t === "damma");
+          const start = dm ? (dm.t === "dot" ? "مفتوحة" : dm.t === "dot2" ? "مكسورة" : "مضمومة") : null;
+          add(w, u.b, "wasl", "همزة وصل: تسقط في الوصل" + (start ? "، وإذا ابتدأتَ بها نطقتَها همزةً " + start : " وتثبت عند الابتداء"));
+          u.marks.forEach((m) => add(w, m.i, "wasl", m === dm ? "نقطة الابتداء: " + (m.t === "dot" ? "فوق الألف = يُبدأ بالفتح" : m.t === "dot2" ? "تحت الألف = يُبدأ بالكسر" : "وسط الألف = يُبدأ بالضمّ")
+            : m === sm ? "الصلة (جرّة): " + (m.t === "fatha" ? "فوق الألف لأن ما قبلها مفتوح" : m.t === "kasra" ? "تحت الألف لأن ما قبلها مكسور" : "وسط الألف لأن ما قبلها مضموم") + "، وليست حركة تُنطق"
+            : "علامة ضبط همزة الوصل"));
+          return;
+        }
         if (u.role === "silentWasl") { add(w, u.b, "wasl", "ألف وصل لا تُنطق في الوصل"); return; }
         if (u.role === "zaid") { add(w, u.b, "zaid", "حرف يُكتب ولا يُنطق"); u.marks.forEach((m) => add(w, m.i, "zaid", "علامة على حرف لا يُنطق")); return; }
         if (u.role === "lamShams") { add(w, u.b, "lam_shamsiya", "لام مدغمة في الحرف بعدها لا تُنطق"); return; }
@@ -756,16 +785,20 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
     const rank = new Map(order.map((id, i) => [id, i]));
     const pick = (list, key) => {
       if (ov && Object.prototype.hasOwnProperty.call(ov, key)) return ov[key] || null;
-      let best = null, br = 1e9;
+      let best = null, br = 1e9, second = null, sr = 1e9;
       for (const c of list) {
-        if (c.cat === "__hide" || !visible.has(c.cat)) continue;
+        if (c.cat === "__hide" || !visible.has(c.cat) || c.cat === best || c.cat === second) continue;
         const r = rank.has(c.cat) ? rank.get(c.cat) : 500;
-        if (r < br) { br = r; best = c.cat; }
+        if (r < br) { second = best; sr = br; br = r; best = c.cat; }
+        else if (r < sr) { sr = r; second = c.cat; }
       }
+      if (key != null && second) alt[key] = second;
       if (list.some((c) => c.cat === "__hide") && visible.has("harakat")) return "__hide";
       return best;
     };
+    const alt = {}; // the next rule meeting on the same part, for the two-colour display
     const out = word.cand.map((list, i) => pick(list, i));
+    out.alt = alt;
     out.s2 = (word.cand2 || []).map((list, i) => pick(list, i + "b")); // second stroke of a tanween
     return out;
   }
@@ -827,7 +860,7 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
 
   const ui = {
     surah: LS.get("surah", 1), mode: LS.get("mode", null), size: LS.get("size", 34),
-    hidden: new Set(LS.get("hidden", [])), lesson: LS.get("lesson", null), rendered: 0,
+    hidden: new Set(LS.get("hidden", [])), lesson: LS.get("lesson", null), rendered: 0, two: LS.get("two", false),
   };
   const P = { surah: 111, ai: 0, mode: "show", picked: null, placed: {}, checked: false };
 
@@ -840,8 +873,20 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
     for (const c of ALLCATS) if (!PRIORITY.includes(c.id)) PRIORITY.push(c.id);
     RANK = new Map(PRIORITY.map((id, i) => [id, i]));
     applyColors();
-    const live = $("#liveLink"), url = STATE.settings && STATE.settings.liveUrl;
-    if (live) { live.hidden = !(url && /^https:\/\//.test(url)); if (!live.hidden) live.href = url; }
+    const live = $("#liveLink"), L = lessonLinks();
+    if (live) { live.hidden = !L.length; if (L.length) { live.href = L.length === 1 ? L[0].url : "#home"; live.target = L.length === 1 ? "_blank" : ""; } }
+  }
+  /** The cheikh's remote-lesson links (Meet, Zoom, Telegram, WhatsApp, YouTube…): one per line, «name | https://…». */
+  const PLATFORMS = [[/meet\.google\./, "Google Meet", "🎥"], [/zoom\.(us|com)/, "Zoom", "🎥"], [/(t\.me|telegram\.(me|org))/, "تيليغرام", "✈️"], [/(wa\.me|whatsapp\.com)/, "واتساب", "💬"],
+    [/(youtube\.com|youtu\.be)/, "يوتيوب", "▶️"], [/teams\.(microsoft|live)\./, "Microsoft Teams", "🎥"], [/(jit\.si|jitsi)/, "Jitsi", "🎥"], [/(facebook\.com|fb\.me|m\.me)/, "فيسبوك", "💬"], [/discord\.(gg|com)/, "Discord", "🎧"]];
+  function lessonLinks() {
+    const st = STATE.settings || {}, raw = (st.links || "") + (st.liveUrl ? "\n" + st.liveUrl : ""), out = [], seen = new Set();
+    for (const line of raw.split(/\n+/)) {
+      const m = line.match(/https:\/\/[^\s|]+/); if (!m || seen.has(m[0])) continue; seen.add(m[0]);
+      const pf = PLATFORMS.find((p) => p[0].test(m[0])), label = line.replace(m[0], "").replace(/[|\s]+$/g, "").replace(/^[|\s]+/g, "").trim();
+      out.push({ url: m[0], label: label || (pf ? pf[1] : "رابط الدرس"), icon: pf ? pf[2] : "🔗", pf: pf ? pf[1] : "" });
+    }
+    return out;
   }
   function legendOrder() {
     const L = (STATE.legend || CORE.concat(T.DEFAULT_ORDER.filter((x) => !CORE.includes(x)))).filter((id) => CATMAP.has(id));
@@ -883,7 +928,7 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
   /* ---------------- data ---------------- */
   // Quran data is tied to the font it was shaped with: every build gets its own address, so a phone can never
   // mix an old glyph table with new surah files.
-  const DATA_V = "ac32a5af71";
+  const DATA_V = "e8d273a185";
   async function getJSON(u) { if (!/state\.json|site\.json/.test(u)) u += "?v=" + DATA_V; const r = await fetch(u, { cache: "no-cache" }); if (!r.ok) throw new Error(u + " " + r.status); return r.json(); }
   function loadSurah(n) {
     if (!surahCache.has(n)) surahCache.set(n, getJSON(`data/s/${String(n).padStart(3, "0")}.json`).catch((e) => { surahCache.delete(n); throw e; }));
@@ -945,7 +990,7 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
   const MARK_RE = /[\u064B-\u065F\u0670\u06D6-\u06ED\u0654\u0655\u200F]/;
   const covCache = new Map();
   const TAN_CH = "\u064B\u064C\u064D\u0657\u065E\u0656\u08F0\u08F1\u08F2", IQ_CH = "\u06E2\u06ED";
-  const WASL_RE = /^ا[\u064E\u064F\u0650][\u06EC\u06EA]/;
+  const WASL_RE = /^ا[\u064E\u064F\u0650]?[\u06EC\u06EA\u06DF]/;
   let WASL_ALT = null;
   let HIT = false; // when true, glyphs carry their character index so a tap can find the letter
   function coverage(text, g) {
@@ -980,7 +1025,21 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
     const iq = idxs.find((j) => IQ_CH.includes(text[j])), tn = idxs.find((j) => TAN_CH.includes(text[j]));
     if (iq != null) return [pickCat(colors, idxs.filter((j) => j !== iq)), (colors && colors[iq]) || null];
     if (tn != null) return [(colors && colors[tn]) || null, (colors && colors.s2 && colors.s2[tn]) || null];
+    const sh = idxs.find((j) => text[j] === "\u0651"), hk = idxs.find((j) => "\u064E\u064F\u0650".includes(text[j]));
+    if (sh != null && hk != null) return [(colors && colors[sh]) || null, (colors && colors[hk]) || null]; // shadda, then its haraka
     const k = pickCat(colors, idxs); return [k, k];
+  }
+  /** Two-colour display: when a second visible rule meets on the same part, its colour fills the other half. */
+  const GRADS = new Set();
+  function paint(cat, colors, idxs, second) {
+    if (!cat) return "";
+    if (cat === "__hide" || !ui.two || !colors || !colors.alt || !idxs) return ` class="k-${cat}"`;
+    let alt = null, br = 1e9;
+    for (const j of idxs) { const a = colors.alt[second ? j + "b" : j]; if (a && a !== cat) { const r = RANK.has(a) ? RANK.get(a) : 900; if (r < br) { br = r; alt = a; } } }
+    if (!alt) return ` class="k-${cat}"`;
+    const id = `gr-${cat}-${alt}`;
+    if (!GRADS.has(id)) { GRADS.add(id); $("#ggrads").innerHTML += (`<linearGradient id="${id}" x1="0" y1="0" x2="1" y2="0"><stop offset="50%" style="stop-color:var(--c-${alt})"/><stop offset="50%" style="stop-color:var(--c-${cat})"/></linearGradient>`); }
+    return ` class="k-${cat}" style="fill:url(#${id})"`;
   }
   /** Every drawn part of a word with the colour it should take: Map "cluster" | "cluster b" → category. */
   function partsOf(wd, colors) {
@@ -1014,11 +1073,13 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
       const idxs = cov.get(c), hit = HIT ? ` data-c="${c}"` : "", tf = `transform="translate(${x} ${-y}) scale(1 -1)"`;
       if (e[5] && idxs) {
         const [ca, cb] = partCats(text, c, idxs, colors, true);
-        uses += `<use href="#g${gid}a" ${tf}${ca ? ` class="k-${ca}"` : ""}${hit}/><use href="#g${gid}b" ${tf}${cb ? ` class="k-${cb}"` : ""}${hit}${HIT ? ' data-s="b"' : ""}/>`;
+        const tn = idxs.filter((j) => TAN_CH.includes(text[j])), solo = (ch) => idxs.filter((j) => ch.includes(text[j]));
+        const ia = tn.length ? tn : solo("\u0651").length ? solo("\u0651") : null, ib = tn.length ? tn : solo("\u064E\u064F\u0650").length && solo("\u0651").length ? solo("\u064E\u064F\u0650") : null;
+        uses += `<use href="#g${gid}a" ${tf}${paint(ca, colors, ia)}${hit}/><use href="#g${gid}b" ${tf}${paint(cb, colors, ib, tn.length > 0)}${hit}${HIT ? ' data-s="b"' : ""}/>`;
         continue;
       }
       const cat = partCats(text, c, idxs, colors, false)[0];
-      uses += `<use href="#g${gid}" ${tf}${cat ? ` class="k-${cat}"` : ""}${hit}/>`;
+      uses += `<use href="#g${gid}" ${tf}${paint(cat, colors, idxs)}${hit}/>`;
     }
     if (minX > maxX) { minX = 0; maxX = adv || 1; }
     const pad = 20, w = maxX - minX + pad * 2, h = YMAX - YMIN;
@@ -1056,6 +1117,7 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
     const juz = META.surahs.filter((s) => s.n >= 78), rest = META.surahs.filter((s) => s.n > 1 && s.n < 78);
     $("#v-home").innerHTML = `<div class="hero"><h2 class="page-title">دورة الطريق إلى الإتقان</h2>
       <p class="lead">بطريقة الشيخ المقرئ محمّد بن عبد الله جوّاد · برواية قالون عن نافع. اختر سورة لترى القواعد عليها وتمارينها: التلوين، وأزمنة الحروف، وأحكام الميم والنون الساكنتين، وهمزة الوصل.</p></div>
+      ${lessonLinks().length ? `<div class="remote"><h3 class="sec" style="margin-top:0">الدروس عن بُعد مع الشيخ</h3><div class="bar">${lessonLinks().map((l) => `<a class="btn primary" target="_blank" rel="noopener" href="${esc(l.url)}">${l.icon} ${esc(l.label)}</a>`).join("")}</div><p>افتح المصحف الملوّن هنا وشاركه على الشاشة أثناء الحصة. ولتسميع تلاوتك خارج الحصة: سجّلها من صفحة السورة ثم أرسلها إلى الشيخ.</p></div>` : ""}
       <div class="sgrid one">${card(META.surahs[0])}</div>
       <h3 class="sec">جزء عمّ</h3><div class="sgrid">${juz.map(card).join("")}</div>
       <details class="allsurahs"><summary>باقي سور القرآن</summary><div class="sgrid">${rest.map(card).join("")}</div></details>`;
@@ -1078,13 +1140,14 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
   function legendHTML() {
     const cats = availableCats();
     return cats.map((c) => `<button class="chip" data-cat="${c.id}" aria-pressed="${!ui.hidden.has(c.id)}" style="--dot:var(--c-${c.id})" title="${esc(c.short || "")}"><span class="dot"></span>${esc(c.name)}</button>`).join("")
-      + `<span class="sep"></span><span class="legend-all"><button class="linkbtn" data-legend="all">إظهار الكل</button><button class="linkbtn" data-legend="none">إخفاء الكل</button></span>`;
+      + `<span class="sep"></span><button class="chip" data-two aria-pressed="${!!ui.two}" title="إذا التقى حكمان على الجزء نفسه ظهر بلونين: لون الحكم المقدَّم ولون الذي يليه"><span class="dot" style="background:linear-gradient(90deg,var(--c-ghunna) 50%,var(--c-bayni) 50%)"></span>التقاء حكمين بلونين</button><span class="legend-all"><button class="linkbtn" data-legend="all">إظهار الكل</button><button class="linkbtn" data-legend="none">إخفاء الكل</button></span>`;
   }
   function bindLegend(root, rerender) {
     root.addEventListener("click", (e) => {
       const chip = e.target.closest(".chip[data-cat]");
-      const all = e.target.closest("[data-legend]");
-      if (chip) { const id = chip.dataset.cat; ui.hidden.has(id) ? ui.hidden.delete(id) : ui.hidden.add(id); }
+      const all = e.target.closest("[data-legend]"), two = e.target.closest("[data-two]");
+      if (two) { ui.two = !ui.two; LS.set("two", ui.two); }
+      else if (chip) { const id = chip.dataset.cat; ui.hidden.has(id) ? ui.hidden.delete(id) : ui.hidden.add(id); }
       else if (all) { if (all.dataset.legend === "all") availableCats().forEach((c) => ui.hidden.delete(c.id)); else availableCats().forEach((c) => ui.hidden.add(c.id)); }
       else return;
       LS.set("hidden", Array.from(ui.hidden));
@@ -1151,8 +1214,11 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
         const type = (rec.mimeType || "audio/webm").split(";")[0], ext = /mp4|aac|m4a/.test(type) ? "m4a" : /ogg/.test(type) ? "ogg" : "webm";
         const url = URL.createObjectURL(new Blob(chunks, { type }));
         const name = `تلاوتي-${META.surahs[ui.surah - 1].ar}.${ext}`;
-        bar.innerHTML = `<audio controls src="${url}" style="flex:1;min-width:180px"></audio><a class="btn primary" href="${url}" download="${esc(name)}">⬇ تنزيل</a><button class="btn" id="srAgain">↺ من جديد</button><button class="iconbtn" id="srX" aria-label="إغلاق">✕</button>`;
+        const blob = new Blob(chunks, { type }); let file = null, canShare = false;
+        try { file = new File([blob], name, { type }); canShare = !!(navigator.canShare && navigator.canShare({ files: [file] })); } catch (e) {}
+        bar.innerHTML = `<audio controls src="${url}" style="flex:1;min-width:180px"></audio><a class="btn primary" href="${url}" download="${esc(name)}">⬇ تنزيل</a>${canShare ? `<button class="btn" id="srShare">📤 أرسل إلى الشيخ</button>` : ""}<button class="btn" id="srAgain">↺ من جديد</button><button class="iconbtn" id="srX" aria-label="إغلاق">✕</button>`;
         $("#srAgain", bar).onclick = () => idle(); $("#srX", bar).onclick = () => bar.remove();
+        if (canShare) $("#srShare", bar).onclick = () => navigator.share({ files: [file], title: name, text: `تلاوتي لسورة ${META.surahs[ui.surah - 1].ar}` }).catch(() => {});
       };
       rec.start(1000); t0 = Date.now();
       bar.innerHTML = `<button class="btn danger" id="srStop">■ إيقاف</button><span class="rec-timer" id="srT">٠:٠٠</span><span class="grow">جارٍ التسجيل… اقرأ الآن.</span>`;
@@ -1869,19 +1935,21 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
   const kindSeg = () => `<div class="seg" id="pKind" style="margin-bottom:10px;flex-wrap:wrap">${KINDS.map(([k, l]) => `<button data-k="${k}" aria-pressed="${(P.kind || "time") === k}">${l}</button>`).join("")}</div>`;
   function bindKindSeg(v) { $$("#pKind button", v).forEach((b) => (b.onclick = () => { P.kind = b.dataset.k; resetExercise(); renderPractice(); })); }
   /** Hamzat al-wasl drill: every marked wasl alif is drawn plain; the student gives each one of the six forms. */
-  const WASL_LABEL = { "\u064E": "بعد فتح", "\u0650": "بعد كسر", "\u064F": "بعد ضمّ", "\u06EC": "يُبدأ بها بالفتح", "\u06EA": "يُبدأ بها بالكسر" };
+  const WASL_LABEL = { "": "بلا صلة", "\u064E": "بعد فتح", "\u0650": "بعد كسر", "\u064F": "بعد ضمّ", "\u06EC": "يُبدأ بالفتح", "\u06EA": "يُبدأ بالكسر", "\u06DF": "يُبدأ بالضمّ" };
+  const waslKey = (text) => text.match(WASL_RE)[0].slice(1);
+  const waslLabel = (k) => `${WASL_LABEL[k.length > 1 ? k[0] : ""]}<br>${WASL_LABEL[k[k.length - 1]]}`;
   function renderWasl(v, S) {
     const ay = S.ayahs[P.ai];
     P.wasl = P.wasl || {};
     const words = ay.w.map((wd, wi) => ({ wd, wi })).filter((x) => !x.wd[3]);
     const targets = words.filter((x) => WASL_RE.test(x.wd[0]));
-    const keyOf = (wd) => wd[0].slice(1, 3);
+    const keyOf = (wd) => waslKey(wd[0]);
     if (P.wPick == null || !targets.some((t) => t.wi === P.wPick)) P.wPick = targets.length ? targets[0].wi : null;
     let cur = -1;
     WASL_ALT = () => { const k = P.solved ? keyOf(ay.w[cur]) : P.wasl[cur]; const sh = k ? META.waslForms[k] : META.plainAlif; return [sh[0], sh[1], P.checked && !P.solved && P.wasl[cur] ? (P.wasl[cur] === keyOf(ay.w[cur]) ? "k-ok" : "k-bad") : cur === P.wPick && !P.solved ? "k-pick" : ""]; };
     const line = words.map(({ wd, wi }) => { cur = wi; return WASL_RE.test(wd[0]) ? `<button class="w${wi === P.wPick ? " picked" : ""}" data-ww="${wi}" aria-label="${esc(plain(wd[0]))}">${wordSVG(wd, null)}</button>` : `<span class="w">${wordSVG(wd, null)}</span>`; }).join(" ") + ` <span class="ae">${wordSVG(ay.e, null)}</span>`;
     WASL_ALT = null;
-    const forms = Object.keys(META.waslForms).map((k) => `<button class="wform" data-wf="${k}" aria-pressed="${P.wPick != null && P.wasl[P.wPick] === k}"><span class="wf-g">${wordSVG(["", META.waslForms[k][0], META.waslForms[k][1]], null)}</span><span>${WASL_LABEL[k[0]]}<br>${WASL_LABEL[k[1]]}</span></button>`).join("");
+    const forms = Object.keys(META.waslForms).map((k) => `<button class="wform" data-wf="${k}" aria-pressed="${P.wPick != null && P.wasl[P.wPick] === k}"><span class="wf-g">${wordSVG(["", META.waslForms[k][0], META.waslForms[k][1]], null)}</span><span>${waslLabel(k)}</span></button>`).join("");
     let result = "";
     if (P.checked) {
       const right = targets.filter((t) => P.wasl[t.wi] === keyOf(t.wd)).length;
@@ -1890,7 +1958,11 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
     const opts = META.surahs.map((s) => `<option value="${s.n}"${s.n === P.surah ? " selected" : ""}>${AR(s.n)} · ${esc(s.ar)}</option>`).join("");
     const aopts = S.ayahs.map((a, i) => `<option value="${i}"${i === P.ai ? " selected" : ""}>${AR(a.a)}</option>`).join("");
     v.innerHTML = `${surahHead(P.surah)}${surahTabs("wasl")}
-      <p class="lead">كل همزة وصل مرسومة هنا ألفاً مجرّدة. اختر الكلمة ثم اختر شكل همزتها: موضع العلامة بحسب حركة ما قبلها (فوق بعد الفتح، تحت بعد الكسر، وسط بعد الضمّ)، والنقطة بحسب ما يُبدأ به.</p>
+      <p class="lead">كل همزة وصل مرسومة هنا ألفاً مجرّدة. اختر الكلمة ثم اختر شكل همزتها.</p>
+      <details class="waslref" open><summary>منظومة ضبط همزة الوصل</summary>
+        <p><b>الصلة (الجرّة)</b> تدلّ على سقوط الهمزة في الوصل، وموضعها بحسب حركة الحرف الذي قبلها: <b>فوق</b> الألف بعد الفتح، <b>تحتها</b> بعد الكسر، <b>في وسطها</b> بعد الضمّ. ولا صلة إن لم تسبقها حركة (بعد ساكن أو تنوين أو مدّ).</p>
+        <p><b>نقطة الابتداء</b> تدلّ على حركة الهمزة إذا بدأتَ بالكلمة: <b>فوق</b> الألف = فتح (همزة «ال» التعريف)، <b>تحتها</b> = كسر، <b>في وسطها</b> = ضمّ (الفعل الذي ثالثه مضموم ضمّاً لازماً).</p>
+      </details>
       <div class="bar">
         <div class="field"><label for="pS">السورة</label><select id="pS">${opts}</select></div>
         <div class="field"><label for="pA">الآية</label><select id="pA">${aopts}</select></div>
@@ -1949,6 +2021,7 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
         <div class="field" aria-label="حجم الخط"><button class="iconbtn" id="ptMinus" aria-label="تصغير">−</button><button class="iconbtn" id="ptPlus" aria-label="تكبير">+</button></div>
       </div>
       <div class="legend" style="position:static">${brushes.map((b) => `<button class="chip brush${P.brush === b.id ? " on" : ""}" data-brush="${b.id}" style="--dot:var(--c-${b.id})"><span class="dot"></span>${esc(b.name)}</button>`).join("")}<button class="chip brush${P.brush === "__erase" ? " on" : ""}" data-brush="__erase" style="--dot:transparent"><span class="dot"></span>ممحاة</button></div>
+      <div class="rulekey">${brushes.map((b) => `<div class="${P.brush === b.id ? "on" : ""}"><span class="dot" style="--dot:var(--c-${b.id})"></span><b>${esc(b.name)}</b><span>${esc(b.short || "")}</span></div>`).join("")}</div>
       <div class="ayah-show paint" id="pAyah" style="font-size:${P.psize || 56}px">${line}</div>
       <div class="bar"><button class="btn primary" id="ptCheck">تحقّق</button><button class="btn" id="ptSolve">${P.solved ? "عُد إلى تلويني" : "اعرض الحل"}</button><button class="btn" id="ptClear">امسح الكل</button></div>
       ${result}`;
@@ -1985,7 +2058,7 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
     if (P.kind === "paint") return renderPaint(v, S);
     if (P.kind === "wasl") return renderWasl(v, S);
     const nunKind = P.kind === "nun";
-    const cols = nunKind ? T.NUN_RULES.map((r) => ({ id: r.id, name: r.name, cat: r.cat, vis: ["ghunna", "bayni", "idgham"] })) : tableCols();
+    const cols = nunKind ? T.NUN_RULES.map((r) => ({ id: r.id, name: r.name, cat: r.cat, short: r.short, vis: ["ghunna", "bayni", "idgham"] })) : tableCols();
     const opts = META.surahs.map((s) => `<option value="${s.n}"${s.n === P.surah ? " selected" : ""}>${AR(s.n)} · ${esc(s.ar)}</option>`).join("");
     const aopts = S.ayahs.map((a, i) => `<option value="${i}"${i === P.ai ? " selected" : ""}>${AR(a.a)}</option>`).join("");
     const words = ay.w.map((wd, wi) => ({ wd, wi })).filter((x) => !x.wd[3]);
@@ -2046,7 +2119,7 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
       <div class="ayah-show ${P.mode === "exercise" ? "pool" : ""}" id="pAyah">${ayahLine}</div>
       ${P.mode === "exercise" ? `<div class="bar"><button class="btn primary" id="pCheck">تحقّق</button><button class="btn" id="pClear">إفراغ الجدول</button><span style="font-size:13px;color:var(--muted)">${P.picked != null ? "اختر العمود لهذه الكلمة" : "اختر كلمة من الآية"}</span></div>` : ""}
       ${result}
-      <div class="ptable-wrap"><table class="ptable"><thead><tr>${cols.map((c) => `<th style="--hc:var(--c-${c.cat || c.id})">${esc(c.name)}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table></div>`;
+      <div class="ptable-wrap"><table class="ptable"><thead><tr>${cols.map((c) => `<th style="--hc:var(--c-${c.cat || c.id})">${esc(c.name)}<small>${esc(c.short || (CATMAP.get(c.id) || {}).short || "")}</small></th>`).join("")}</tr></thead><tbody>${body}</tbody></table></div>`;
     bindSurahTabs(v);
     $("#pS", v).onchange = (e) => { P.surah = +e.target.value; ui.surah = P.surah; LS.set("surah", ui.surah); P.ai = 0; resetExercise(); renderPractice(); };
     $("#pA", v).onchange = (e) => { P.ai = +e.target.value; resetExercise(); renderPractice(); };
@@ -2185,7 +2258,7 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
     body.innerHTML = `<div class="kv">
       <label for="rMode">طريقة القراءة الافتراضية</label><select id="rMode"><option value="waqf">الوقف على رؤوس الآي</option><option value="wasl">الوصل</option><option value="marks">الوقف عند علامات الوقف</option></select>
       <label for="rFinal">الحركة الأخيرة عند الوقف</label><select id="rFinal"><option value="keep">تبقى بلون إتمام الحركات</option><option value="sakin">تأخذ لون الساكن</option><option value="hide">تُخفى</option></select>
-      <label for="rLive">رابط الحصة المباشرة (Google Meet أو Zoom أو Jitsi)</label><input type="text" id="rLive" dir="ltr" placeholder="https://meet.google.com/…" value="${esc(st.liveUrl || "")}">
+      <label for="rLive">روابط الدروس عن بُعد: سطر لكل رابط (Google Meet، Zoom، تيليغرام، واتساب، يوتيوب للتسجيلات…). يمكن كتابة اسم قبل الرابط: «حصة السبت | https://…»</label><textarea id="rLive" dir="ltr" rows="4" placeholder="https://meet.google.com/…&#10;قناة التسجيلات | https://t.me/…">${esc(lessonLinks().map((l) => (l.label && l.label !== l.pf && l.label !== "رابط الدرس" ? l.label + " | " : "") + l.url).join("\n"))}</textarea>
       <label for="rShadid">الحروف الشديدة</label><input type="text" id="rShadid" value="${esc(cl.shadid)}">
       <label for="rBayni">الحروف البينية</label><input type="text" id="rBayni" value="${esc(cl.bayni)}">
       <label for="rTakh">حروف التخليص (الاستعلاء)</label><input type="text" id="rTakh" value="${esc(cl.takhlis)}">
@@ -2193,12 +2266,12 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
     $("#rMode", body).value = st.mode || "waqf";
     $("#rFinal", body).value = st.finalHaraka || "keep";
     const upd = () => {
-      STATE.settings = Object.assign({}, STATE.settings, { mode: $("#rMode", body).value, finalHaraka: $("#rFinal", body).value, liveUrl: $("#rLive", body).value.trim() });
+      STATE.settings = Object.assign({}, STATE.settings, { mode: $("#rMode", body).value, finalHaraka: $("#rFinal", body).value, links: $("#rLive", body).value.trim(), liveUrl: "" });
       refreshCats();
       STATE.classes = { shadid: $("#rShadid", body).value.trim(), bayni: $("#rBayni", body).value.trim(), takhlis: $("#rTakh", body).value.trim() };
       anVersion++; anCache.clear(); BASMALA_AN = null; markDirty();
     };
-    $$("select,input", body).forEach((x) => x.addEventListener("change", upd));
+    $$("select,input,textarea", body).forEach((x) => x.addEventListener("change", upd));
   }
   function keyLabel(k) {
     if (k.startsWith("f:")) return `كل مواضع «${plain(k.slice(2))}»`;

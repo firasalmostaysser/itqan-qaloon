@@ -31,8 +31,22 @@ function mergesLetters(text, clusters) {
 }
 function shape(text) {
   if (cache.has(text)) return cache.get(text);
-  let r = null;
-  for (const feats of FEATURE_SETS) { r = shapeWith(text, feats); if (!mergesLetters(text, r.clusters)) break; }
+  let r = null, fi = 0;
+  for (const feats of FEATURE_SETS) { r = shapeWith(text, feats); if (!mergesLetters(text, r.clusters)) break; fi++; }
+  // Hamzat al-wasl: the alif with its sila stroke and ibtida dot is one composite glyph that the font only
+  // builds with its default features. An alif never joins the next letter, so shape it apart and append it.
+  const wp = fi > 0 && text.match(/^\u0627[\u064E\u064F\u0650]?[\u06EC\u06EA\u06DF]/);
+  if (wp && wp[0].length < text.length) {
+    const head = shapeWith(wp[0], []), n = wp[0].length;
+    if (head.out[1].length === 4) {
+      let tail = null;
+      for (const feats of FEATURE_SETS) { tail = shapeWith(text.slice(n), feats); if (!mergesLetters(text.slice(n), tail.clusters)) break; }
+      const flat = [];
+      for (let i = 0; i < tail.out[1].length; i += 4) flat.push(tail.out[1][i], tail.out[1][i + 1] + n, tail.out[1][i + 2], tail.out[1][i + 3]);
+      flat.push(head.out[1][0], 0, tail.out[0] + head.out[1][2], head.out[1][3]);
+      r = { out: [tail.out[0] + head.out[0], flat] };
+    }
+  }
   for (let i = 0; i < r.out[1].length; i += 4) used.set(r.out[1][i], true);
   cache.set(text, r.out);
   return r.out;
@@ -94,18 +108,20 @@ const basmala = BASMALA.split(" ").map((w) => { const [adv, g] = shape(w); retur
 // Hamzat al-wasl drill: the plain alif and the six marked forms (sign above / below / middle × begun with fatha / kasra).
 const plainAlif = shape("ا");
 const waslForms = {};
-for (const h of ["\u064E", "\u0650", "\u064F"]) for (const d of ["\u06EC", "\u06EA"]) waslForms[h + d] = shape("ا" + h + d);
+for (const h of ["", "\u064E", "\u0650", "\u064F"]) for (const d of ["\u06EC", "\u06EA", "\u06DF"]) waslForms[h + d] = shape("ا" + h + d);
 
 // Tanween glyphs are split into their two strokes so each can take its own colour:
 // A = the stroke next to the letter (its haraka), B = the other one (the tanween's noon).
-// The kasra + small-meem ligature is split the same way (A = kasra, B = the meem of iqlab).
-const TAN = "\u064B\u064C\u064D\u0657\u065E\u0656\u08F0\u08F1\u08F2", IQ = "\u06E2\u06ED", HAR = "\u064E\u064F\u0650";
+// The kasra + small-meem ligature is split the same way (A = kasra, B = the meem of iqlab),
+// and so is a shadda drawn in one glyph with its fatha or damma (A = shadda, B = the haraka).
+const TAN = "\u064B\u064C\u064D\u0657\u065E\u0656\u08F0\u08F1\u08F2", IQ = "\u06E2\u06ED", HAR = "\u064E\u064F\u0650", SHD = "\u0651";
 const splitKind = new Map();
 for (const [text, [, flat]] of cache) {
   const cl = new Set(); for (let i = 1; i < flat.length; i += 4) cl.add(flat[i]);
   for (let i = 0; i < flat.length; i += 4) {
     const ch = text[flat[i + 1]], nx = text[flat[i + 1] + 1], pv = text[flat[i + 1] - 1];
     if (TAN.includes(ch)) splitKind.set(flat[i], "tan");
+    else if ((ch === SHD && ((HAR.includes(nx) && !cl.has(flat[i + 1] + 1)) || (HAR.includes(pv) && !cl.has(flat[i + 1] - 1)))) || (HAR.includes(ch) && ((nx === SHD && !cl.has(flat[i + 1] + 1)) || (pv === SHD && !cl.has(flat[i + 1] - 1))))) { if (!splitKind.has(flat[i])) splitKind.set(flat[i], "shd"); }
     else if ((HAR.includes(ch) && nx && IQ.includes(nx) && !cl.has(flat[i + 1] + 1)) || (IQ.includes(ch) && pv && HAR.includes(pv) && !cl.has(flat[i + 1] - 1))) splitKind.set(flat[i], "lig");
   }
 }
