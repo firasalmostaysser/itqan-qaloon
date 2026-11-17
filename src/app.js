@@ -1147,10 +1147,17 @@
   function bindKindSeg(v) { $$("#pKind button", v).forEach((b) => (b.onclick = () => { P.kind = b.dataset.k; resetExercise(); renderPractice(); })); }
   /** The words a drill works on: one ayah, or the whole surah when P.ai is -1. Each word has an id = ayah index × 1000 + word index. */
   const defAi = (n) => (META.surahs[n - 1].count <= 40 ? -1 : 0); // short surahs open whole; long ones ayah by ayah
+  // The basmalah opens every surah but at-Tawba, in the drills too (ai = -1): it is coloured, painted and graded like an ayah.
+  const BASMALA_AY = () => ({ a: 0, w: META.basmala, e: null });
   function drillScope(S) {
-    const ais = P.ai < 0 ? S.ayahs.map((_, i) => i) : [P.ai], items = [], by = new Map();
-    for (const ai of ais) { const ay = S.ayahs[ai], an = analyze(S, ai); ay.w.forEach((wd, wi) => { if (wd[3]) return; const it = { id: ai * 1000 + wi, ai, wi, wd, ay, an: an[wi] }; items.push(it); by.set(it.id, it); }); }
-    const line = (fn) => ais.map((ai) => items.filter((it) => it.ai === ai).map(fn).join(" ") + ` <span class="ae">${wordSVG(S.ayahs[ai].e, null)}</span>`).join(" ");
+    const withB = S.n !== 9 && P.ai <= 0;
+    const ais = (withB ? [-1] : []).concat(P.ai < 0 ? S.ayahs.map((_, i) => i) : [P.ai]), items = [], by = new Map();
+    for (const ai of ais) {
+      const ay = ai < 0 ? BASMALA_AY() : S.ayahs[ai], an = ai < 0 ? basmalaAn() : analyze(S, ai);
+      ay.w.forEach((wd, wi) => { if (wd[3]) return; const it = { id: ai * 1000 + wi, ai, wi, wd, ay, an: an[wi] }; items.push(it); by.set(it.id, it); });
+    }
+    const line = (fn) => ais.map((ai) => ai < 0 ? `<span class="bsm">${items.filter((it) => it.ai === ai).map(fn).join(" ")}</span>`
+      : items.filter((it) => it.ai === ai).map(fn).join(" ") + ` <span class="ae">${wordSVG(S.ayahs[ai].e, null)}</span>`).join(" ");
     return { items, by, line, key: P.ai < 0 ? "all" : S.ayahs[P.ai].a };
   }
   const ayahOpts = (S) => `<option value="-1"${P.ai < 0 ? " selected" : ""}>السورة كلها</option>` + S.ayahs.map((a, i) => `<option value="${i}"${i === P.ai ? " selected" : ""}>${AR(a.a)}</option>`).join("");
@@ -1940,7 +1947,7 @@
     $("#pPrev", v).onclick = () => { if (P.ai >= 0) { P.ai--; resetExercise(); renderPractice(); } };
     $("#pNext", v).onclick = () => { if (P.ai < S.ayahs.length - 1) { P.ai++; resetExercise(); renderPractice(); } };
     if (P.mode === "show") {
-      $$("[data-tw],[data-pw]", v).forEach((b) => (b.onclick = () => { const it = W(+(b.dataset.tw || b.dataset.pw)); openWord(S, it.ai, it.wi, "practice"); }));
+      $$("[data-tw],[data-pw]", v).forEach((b) => (b.onclick = () => { const it = W(+(b.dataset.tw || b.dataset.pw)); if (it.ai >= 0) openWord(S, it.ai, it.wi, "practice"); }));
     } else {
       $$("[data-pw]", v).forEach((b) => { if (+b.dataset.pw === P.picked) b.classList.add("picked"); b.onclick = () => { if (P.locked) return; P.picked = +b.dataset.pw === P.picked ? null : +b.dataset.pw; P.checked = false; renderPractice(); }; });
       $$("[data-col]", v).forEach((td) => (td.onclick = (e) => {

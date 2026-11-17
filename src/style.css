@@ -420,3 +420,6 @@ textarea.full { width: 100%; font: inherit; padding: 8px; border: 1px solid var(
 .letters input { font: inherit; padding: 3px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: inherit; }
 .lvl .chip[aria-pressed="true"] { background: var(--zitouna); color: var(--on-accent); border-color: var(--zitouna); }
 @media print { .foot { display: none !important; } }
+
+/* the basmalah on its own line at the head of a drill */
+.bsm { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 .25em; width: 100%; margin-bottom: .2em; }

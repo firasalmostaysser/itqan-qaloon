@@ -152,6 +152,10 @@ for (const s of surahs) {
     const toks = body.split(/[  ]+/).filter(Boolean);
     let li = toks.length - 1; while (li > 0 && !hasLetter(toks[li])) li--;
     toks[li] = atStop(toks[li]);
+    // «المصحف المعلّم»: the doubled lam of الذي، الذين، التي، الليل، لله is written with a shadda and a fatha
+    // (KFGQPC writes it bare: «اَ۬لذِينَ»، «لِلهِ»). A bare lam after the article alif or a prefix lam, before ذ ت ي ه
+    // that carry no shadda of their own.
+    for (let i = 0; i < toks.length; i++) toks[i] = toks[i].replace(/^((?:[وف][\u064E])?(?:ا[\u064E\u064F\u0650]?[\u06EC\u06EA\u06DF]?|ل[\u0650\u0651]{1,2}))ل(?=[ذتيه](?![\u064B-\u0650\u0652\u06E1]*\u0651))/, "$1ل\u0651\u064E");
     // «المصحف المعلّم»: a sakin noon before ي or و of the next word is written bare, and the ي or و without a shadda
     // (KFGQPC: «مَنْ يَّخْشَىٰ», Tunisian: «مَن يَخْشَىٰ»). The noon is read with a complete ghunna either way.
     for (let i = 0; i + 1 < toks.length; i++) {
