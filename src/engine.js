@@ -19,7 +19,7 @@
     { id: "takhlis", name: "تخليص الحروف", color: "#F7941D", dark: "#FFAE4D", core: true, on: true, table: true,
       short: "(خص ضغط قظ) والراء المفخّمة ولام لفظ الجلالة بعد فتح أو ضمّ: لا يؤثّر المفخّم في المرقّق ولا العكس." },
     // Extras the cheikh can switch on.
-    { id: "idgham", name: "حرف مدغم لا يُنطق", color: "#B0B0B0", dark: "#6E6E6E", on: true,
+    { id: "idgham", name: "حرف مدغم لا يُنطق", color: "#B0B0B0", dark: "#6E6E6E", on: false,
       short: "حرف يُدغم في الذي بعده فلا يُنطق مستقلاً، مثل نون «مِن» قبل «مَّسَد»." },
     { id: "wasl", name: "ضبط همزة الوصل", color: "#0E7C66", dark: "#3CC9A8", on: false,
       short: "همزة الوصل وعلامة ضبطها: تسقط في الوصل وتثبت في الابتداء." },
@@ -198,7 +198,7 @@
     };
     const extPrev = ctx.prevWord ? wordRoles(parseWord(ctx.prevWord)) : null;
     // an ayah that ends with a tanween is read on into the next one, so the next ayah is not a fresh start
-    const prevReadsOn = !!(extPrev && extPrev.units.length && (() => { const u = extPrev.units[extPrev.units.length - 1]; return u.tanMark || u.role === "tanAlif" || (u.iqlab && u.vowel); })());
+    const prevReadsOn = mode === "wasl" && !!(extPrev && extPrev.units.length && (() => { const u = extPrev.units[extPrev.units.length - 1]; return u.tanMark || u.role === "tanAlif" || (u.iqlab && u.vowel); })());
     const startsAt = (wi) => (wi === 0 ? !prevReadsOn && (mode !== "wasl" || ctx.startHere === true || !ctx.prevWord) : stopAfter(wi - 1));
     const extNext = ctx.nextWord ? wordRoles(parseWord(ctx.nextWord)) : null;
 
@@ -214,7 +214,7 @@
       for (let kk = k + 1; kk < w.units.length; kk++) { const u = w.units[kk]; if (u.role !== "zaid" && u.role !== "kashida") return { u, sameWord: true }; }
       const nw = wi + 1 < n ? W[wi + 1] : extNext;
       if (!nw) return null;
-      const pause = wi < n - 1 && w.units.some((u) => u.waqf);
+      const pause = mode === "marks" && wi < n - 1 && w.units.some((u) => u.waqf); // pause marks inside an ayah are read on
       for (const u of nw.units) {
         if (u.role === "wasl") return { wasl: true, pause };
         if (u.role !== "zaid" && u.role !== "kashida") return { u, sameWord: false, pause };
@@ -283,8 +283,9 @@
       let waqfK = -1;
       if (stopHere && lastK >= 0) {
         const u = U[lastK];
-        const tanFinal = (u.tanMark || u.role === "tanAlif" || (u.iqlab && u.vowel)) && !!readOn(wi, lastK); // read on into the next ayah
-        if (u.role === "madd" || tanFinal || (u.role === "tanAlif")) { waqfK = -2; }
+        // every stop is on a sukun, a tanween too (مَّسَدٍ: a sakin د); only a madd letter and the alif of a fatha tanween
+        // (سَبِيلاً: read as a madd alif) are not stopped on
+        if (u.role === "madd" || u.role === "tanAlif") { waqfK = -2; }
         else if (u.L === "ر" && u.vowel === "i" && !u.shadda && !u.tanMark) { waqfK = -2; } // final ر with a kasra keeps it
         else if (u.role === "letter") waqfK = lastK;
       }
@@ -295,9 +296,8 @@
           const dm = u.marks.find((m) => m.t === "dot" || m.t === "dot2" || m.t === "zero"), sm = u.marks.find((m) => m.t === "fatha" || m.t === "kasra" || m.t === "damma");
           const start = dm ? (dm.t === "dot" ? "مفتوحة" : dm.t === "dot2" ? "مكسورة" : "مضمومة") : null;
           add(w, u.b, "wasl", "همزة وصل: تسقط في الوصل" + (start ? "، وإذا ابتدأتَ بها نطقتَها همزةً " + start : " وتثبت عند الابتداء"));
-          u.marks.forEach((m) => add(w, m.i, "wasl", m === dm ? "نقطة الابتداء: " + (m.t === "dot" ? "فوق الألف = يُبدأ بالفتح" : m.t === "dot2" ? "تحت الألف = يُبدأ بالكسر" : "وسط الألف = يُبدأ بالضمّ")
-            : m === sm ? "الصلة (جرّة): " + (m.t === "fatha" ? "فوق الألف لأن ما قبلها مفتوح" : m.t === "kasra" ? "تحت الألف لأن ما قبلها مكسور" : "وسط الألف لأن ما قبلها مضموم") + "، وليست حركة تُنطق"
-            : "علامة ضبط همزة الوصل"));
+          u.marks.forEach((m) => add(w, m.i, "wasl", m === dm ? "نقطة الابتداء: " + (m.t === "dot" ? "فوق الألف = يُبدأ بالفتح" : m.t === "dot2" ? "تحت الألف = يُبدأ بالكسر" : "وسط الألف = يُبدأ بالضمّ") : "علامة ضبط همزة الوصل"));
+          void sm;
           return;
         }
         if (u.role === "silentWasl") { add(w, u.b, "wasl", "ألف وصل لا تُنطق في الوصل"); return; }
@@ -340,22 +340,23 @@
           if (isNM && !u.shadda) add(w, u.b, "ghunna_anqas", `غنّة أنقص في ${name} المتحرّكة`);
         }
         if (u.tanMark || u.role === "tanAlif" || (u.iqlab && (u.vowel || u.role === "tanAlif"))) {
-          const m = u.tanMark, nx = readOn(wi, k), rule = nunRule(nx);
-          const live = nx && !nx.wasl && !nx.pause;
+          const m = u.tanMark, endStop = stopHere && k === lastK;
+          const nx = endStop ? null : readOn(wi, k), rule = endStop ? null : nunRule(nx);
           tag(w, k, m ? m.i : u.iqlab ? u.iqlab.i : u.b, "t", u.iqlab ? "iqlab" : rule);
           if (m) {
+            // each stroke has its colour: the first is the letter's haraka, the second is the tanween's noon
             add(w, m.i, "harakat", "العلامة الأولى من التنوين: حركة الحرف، تُتمّ");
-            if (live) {
-              const N = nx.u.L;
-              if (rule === "ikhfa") add2(w, m.i, "ghunna", "العلامة الثانية: نون التنوين مخفاة بغنّة");
-              else if (rule === "iqlab") add2(w, m.i, "ghunna", "العلامة الثانية: نون التنوين تُقلب ميماً بغنّة");
-              else if (rule === "idgham_ghunna" && !("نم".includes(N) && nx.u.shadda)) add2(w, m.i, "ghunna", "العلامة الثانية: نون التنوين مدغمة بغنّة");
-              else if (rule === "izhar") add2(w, m.i, "bayni", "العلامة الثانية: نون التنوين مظهرة، وهي ساكنة بينيّة");
-            }
+            if (endStop || !nx) add2(w, m.i, "harakat", "العلامة الثانية: التنوين عند الوقف في آخر الآية، يُكتب ولا تُنطق نونه");
+            else if (rule === "wasl") add2(w, m.i, "harakat", "العلامة الثانية: نون التنوين تُكسر لالتقاء الساكنين، فتُتمّ كسرتها");
+            else if (rule === "ikhfa") add2(w, m.i, "ghunna", "العلامة الثانية: نون التنوين مخفاة بغنّة");
+            else if (rule === "iqlab") add2(w, m.i, "ghunna", "العلامة الثانية: نون التنوين تُقلب ميماً بغنّة");
+            else if (rule === "idgham_ghunna") add2(w, m.i, "ghunna", "العلامة الثانية: نون التنوين مدغمة بغنّة");
+            else if (rule === "idgham_bila") add2(w, m.i, "bayni", `العلامة الثانية: نون التنوين تُدغم في ${nx.u.L === "ل" ? "اللام" : "الراء"} فتصير ${nx.u.L === "ل" ? "لاماً" : "راءً"} ساكنة: بينيّة`);
+            else if (rule === "izhar") add2(w, m.i, "bayni", "العلامة الثانية: نون التنوين مظهرة، وهي ساكنة بينيّة");
           }
           if (u.vowelMark && u.role === "tanAlif") add(w, u.vowelMark.i, "harakat", "إتمام الحركة");
         }
-        if (u.iqlab && !(sakinNM && nmNext && nmNext.pause)) add(w, u.iqlab.i, "ghunna", "إقلاب: الميم الصغيرة تدلّ على قلب النون ميماً مخفاة بغنّة");
+        if (u.iqlab) add(w, u.iqlab.i, "ghunna", "إقلاب: الميم الصغيرة تدلّ على قلب النون ميماً مخفاة بغنّة");
         u.marks.forEach((m) => { if (m.t === "snoon") add(w, m.i, "ghunna", "نون صغيرة مخفاة بغنّة"); });
 
         // ---- sakin nun / meem written with no sign (hidden or merged) ----
@@ -363,8 +364,9 @@
           if (nmLive) {
             const N = nmNext.u.L;
             if (L === "ن") {
-              if (nmRule === "idgham_bila" || (nmRule === "idgham_ghunna" && "نم".includes(N) && nmNext.u.shadda)) add(w, u.b, "idgham", `نون مدغمة في ${LETTER_NAME[N] || N}: الغنّة على شدّة ما بعدها`);
-              else if (nmRule === "idgham_ghunna") add(w, u.b, "ghunna", "نون ساكنة مدغمة بغنّة");
+              if (nmRule === "idgham_bila") add(w, u.b, "idgham", `نون مدغمة في ${LETTER_NAME[N] || N} بلا غنّة: لا تُنطق`);
+              else if (nmRule === "idgham_ghunna" && "نم".includes(N) && nmNext.u.shadda) add(w, u.b, "idgham", `نون مدغمة في ${LETTER_NAME[N] || N}: الغنّة على شدّة ما بعدها`);
+              else if (nmRule === "idgham_ghunna") add(w, u.b, "ghunna", `نون ساكنة مدغمة بغنّة في ${LETTER_NAME[N] || N}`);
               else if (nmRule === "ikhfa") add(w, u.b, "ghunna", "إخفاء النون بغنّة");
               else if (nmRule === "iqlab") add(w, u.b, "ghunna", "إقلاب النون ميماً بغنّة");
             } else {
@@ -399,7 +401,9 @@
           const target = u.madd || u.dagger;
           let cat = "madd_tabii", why = "مدّ طبيعي بمقدار حركتين";
           if (u.madd) {
-            const nx = nextUnit(wi, k);
+            // a maddah over the last letter of an ayah looks across to the next ayah (تُجْزَىٰٓ ۝ إِلَّا: منفصل when the ayahs are joined)
+            const ro = !nextUnit(wi, k) && stopHere ? readOn(wi, k) : null;
+            const nx = nextUnit(wi, k) || (ro && ro.u ? { u: ro.u, sameWord: false } : null);
             if (nx && nx.sameWord && nx.u.L === "ء") { cat = "madd_muttasil"; why = "مدّ متّصل: بعده همز في الكلمة نفسها"; }
             else if (nx && !nx.sameWord && nx.u.L === "ء") { cat = "madd_munfasil"; why = "مدّ منفصل: الهمز في أوّل الكلمة التالية"; }
             else { cat = "madd_lazim"; why = "مدّ لازم: بعده سكون أصلي"; }
@@ -414,6 +418,8 @@
           }
         }
         u.marks.forEach((m) => { if (m.t === "swaw" || m.t === "sya") add(w, m.i, "madd_sila", "صلة هاء الكناية"); });
+        // a second haraka on the same letter (the fatha on a small ya: ءَاتَيٰنِۦَ) is completed too
+        u.marks.forEach((m) => { if (VOW[m.t] && m !== u.vowelMark && !w.cand[m.i].length) add(w, m.i, "harakat", "إتمام الحركة"); });
         if (u.dot && u.role === "letter") add(w, u.dot.i, "ikhtilas", "علامة اختلاس أو إشمام (قالون)");
       });
     });

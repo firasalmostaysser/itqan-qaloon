@@ -20,8 +20,25 @@ const cache = new Map();
 // every letter body (and every mark) stays separately colourable.
 const MARK = /[\u064B-\u065F\u0670\u06D6-\u06ED\u0654\u0655\u200F]/;
 const FEATURE_SETS = [[], ["-calt"], ["-liga"], ["-liga", "-calt"]].map((s) => s.map((x) => hb.Feature.fromString(x)));
+function marksInLetter(text, clusters) {
+  const chars = Array.from(text), have = new Set(clusters);
+  for (let i = 0; i < chars.length; i++) {
+    if (!/[\u064B-\u0652\u0656\u0657\u065E\u06E1\u06E2\u06ED\u08F0-\u08F2]/.test(chars[i]) || have.has(i)) continue;
+    if (/[\u064B-\u064D\u0656\u0657\u065E\u08F0-\u08F2]/.test(chars[i])) return true; // a tanween shares a glyph: its two strokes need two colours
+    let j = i - 1; while (j >= 0 && MARK.test(chars[j]) && !have.has(j)) j--;
+    if (j < 0 || !MARK.test(chars[j])) return true; // no mark glyph before it in its run: it went into the letter
+  }
+  return false;
+}
 function mergesLetters(text, clusters) {
-  const chars = Array.from(text), sorted = [...new Set(clusters)].sort((a, b) => a - b);
+  const chars = Array.from(text), sorted = [...new Set(clusters)].sort((a, b) => a - b), have = new Set(clusters);
+  // a letter with no glyph of its own was drawn inside another letter's glyph (ض + ر, خ after a mark…)
+  for (let i = 0; i < chars.length; i++) {
+    if (MARK.test(chars[i]) || have.has(i)) continue;
+    let p = i - 1; while (p >= 0 && MARK.test(chars[p])) p--;
+    if (p >= 0 && chars[p] === "ل" && "اأإآٱ".includes(chars[i])) continue; // lam-alef
+    return true;
+  }
   for (let k = 0; k < sorted.length; k++) {
     const e = k + 1 < sorted.length ? sorted[k + 1] : chars.length, bases = [];
     for (let i = sorted[k]; i < e; i++) if (!MARK.test(chars[i])) bases.push(chars[i]);
@@ -31,14 +48,24 @@ function mergesLetters(text, clusters) {
 }
 function shape(text) {
   if (cache.has(text)) return cache.get(text);
-  let r = null, fi = 0;
-  for (const feats of FEATURE_SETS) { r = shapeWith(text, feats); if (!mergesLetters(text, r.clusters)) break; fi++; }
-  // Hamzat al-wasl: the alif with its sila stroke and ibtida dot is one composite glyph that the font only
-  // builds with its default features. An alif never joins the next letter, so shape it apart and append it.
-  const wp = fi > 0 && text.match(/^\u0627[\u064E\u064F\u0650][\u06EC\u06EA\u06DF]/);
+  // prefer a shaping where every letter and every coloured mark has a glyph of its own; a mark drawn inside its
+  // letter's glyph (a final meem with its kasra and the small meem of iqlab) could not take its own colour
+  let r = null, fi = 0, firstOk = null;
+  for (const feats of FEATURE_SETS) {
+    r = shapeWith(text, feats);
+    if (!mergesLetters(text, r.clusters)) { if (!firstOk) firstOk = r; if (!marksInLetter(text, r.clusters)) break; }
+    fi++;
+  }
+  if (fi === FEATURE_SETS.length && firstOk) r = firstOk;
+  // Hamzat al-wasl, drawn as the cheikh writes it («المصحف المعلّم»): the alif and its ibtida dot only (above:
+  // begun with a fatha, below: a kasra, in the middle: a damma). The sila stroke stays in the text, so the engine
+  // still tells a wasl alif from an eased hamza, but it is not drawn. An alif never joins the next letter, so the
+  // head is shaped apart and appended.
+  const wp = text.match(/^\u0627[\u064E\u064F\u0650][\u06EC\u06EA\u06DF]/);
   if (wp && wp[0].length < text.length) {
-    const head = shapeWith(wp[0], []), n = wp[0].length;
-    if (head.out[1].length === 4) {
+    const hs = shapeWith("\u0627" + wp[0][2], []), n = wp[0].length;
+    const head = { out: [hs.out[0], hs.out[1].map((v, i) => (i % 4 === 1 ? (v === 0 ? 0 : 2) : v))] };
+    {
       let tail = null;
       for (const feats of FEATURE_SETS) { tail = shapeWith(text.slice(n), feats); if (!mergesLetters(text.slice(n), tail.clusters)) break; }
       const flat = [];
@@ -53,7 +80,9 @@ function shape(text) {
 }
 function shapeWith(text, feats) {
   const b = new hb.Buffer();
-  b.addText(text.replace(/\u06D2/g, "\u0649")); // the Douri font has no final-ya form for U+06D2: draw it as a dotless ya
+  // the Douri font has no final-ya form for U+06D2: draw it as a dotless ya. A hamza below with an open kasratan
+  // (اِ۪مْرِےٕٖ) is one glyph in the font: draw the plain kasratan so its two strokes stay apart.
+  b.addText(text.replace(/\u06D2/g, "\u0649").replace(/\u0655\u0656/g, "\u0655\u064D"));
   b.guessSegmentProperties();
   b.setClusterLevel(hb.ClusterLevel.CHARACTERS);
   hb.shape(font, b, feats || []);
@@ -72,6 +101,36 @@ function shapeWith(text, feats) {
 }
 
 const hasLetter = (w) => /[ء-يٱے]/.test(w);
+// Every ayah ends on a stop (the cheikh stops on the last letter with a sukun). The KFGQPC text writes the last word
+// for reading on: a pause mark after it (ۖ on almost every ayah), the small meem of iqlab into the next ayah or the
+// next surah's basmala («مَّسَدِۢ»), the open tanween. At a stop they mean nothing: drop the pause mark and write
+// the tanween in full.
+const TAN_OF = { "\u064E": "\u064B", "\u064F": "\u064C", "\u0650": "\u064D" };
+const atStop = (w) => w.replace(/[\u06D6-\u06DC]/g, "").replace(/([\u064E\u064F\u0650])[\u06E2\u06ED]/g, (m, h) => TAN_OF[h])
+  .replace(/[\u08F0\u065E]/g, "\u064B").replace(/[\u08F1\u0657]/g, "\u064C").replace(/[\u08F2\u0656]/g, "\u064D");
+// Ayah numbers in Western digits (1 2 3), as on the cheikh's slides, inside the font's empty ornament.
+const ORN = 247, ORN_ADV = shapeWith("\u06DD", []).out[0], OE = font.glyphExtents(ORN);
+const digitGid = (d) => shapeWith(String(d), []).out[1][0];
+const DIG_SCALE = 0.36 * Math.abs(OE.height) / Math.max(...[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => Math.abs(font.glyphExtents(digitGid(d)).height)));
+const synth = new Map(); // synthetic gid -> scaled outline and extents
+const scalePath = (d, k) => d.replace(/-?\d+(\.\d+)?/g, (v) => String(Math.round(+v * k)));
+function digitGlyph(d) {
+  const id = 90000 + d;
+  if (!synth.has(id)) {
+    const g = digitGid(d), e = font.glyphExtents(g);
+    synth.set(id, { d: scalePath(font.glyphToPath(g), DIG_SCALE), x0: e.xBearing * DIG_SCALE, x1: (e.xBearing + e.width) * DIG_SCALE, y1: e.yBearing * DIG_SCALE, y0: (e.yBearing + e.height) * DIG_SCALE, adv: shapeWith(String(d), []).out[0] * DIG_SCALE });
+  }
+  return id;
+}
+function ayahMark(n) {
+  const ds = String(n).split("").map(Number).map(digitGlyph), sp = ds.map((id) => synth.get(id));
+  const w = sp.reduce((a, g) => a + g.adv, 0), cx = OE.xBearing + OE.width / 2, cy = OE.yBearing + OE.height / 2;
+  const top = Math.max(...sp.map((g) => g.y1)), bot = Math.min(...sp.map((g) => g.y0)), flat = [ORN, 0, 0, 0];
+  let x = cx - w / 2;
+  ds.forEach((id, k) => { flat.push(id, 0, Math.round(x), Math.round(cy - (top + bot) / 2)); x += sp[k].adv; });
+  used.set(ORN, true);
+  return [ORN_ADV, flat];
+}
 const surahs = [];
 const bySurah = new Map();
 for (const row of Q) {
@@ -90,12 +149,23 @@ for (const s of surahs) {
     const m = row.aya_text.match(/^([\s\S]*?) ([٠-٩]+)$/);
     const body = m ? m[1] : row.aya_text;
     const num = m ? m[2] : String(row.aya_no);
-    const words = body.split(/[  ]+/).filter(Boolean).map((w) => {
+    const toks = body.split(/[  ]+/).filter(Boolean);
+    let li = toks.length - 1; while (li > 0 && !hasLetter(toks[li])) li--;
+    toks[li] = atStop(toks[li]);
+    // «المصحف المعلّم»: a sakin noon before ي or و of the next word is written bare, and the ي or و without a shadda
+    // (KFGQPC: «مَنْ يَّخْشَىٰ», Tunisian: «مَن يَخْشَىٰ»). The noon is read with a complete ghunna either way.
+    for (let i = 0; i + 1 < toks.length; i++) {
+      if (/ن[\u0652\u06E1][\u06D6-\u06DC]?$/.test(toks[i]) && /^[يو]\u0651/.test(toks[i + 1])) {
+        toks[i] = toks[i].replace(/ن[\u0652\u06E1]([\u06D6-\u06DC]?)$/, "ن$1");
+        toks[i + 1] = toks[i + 1].replace(/^([يو])\u0651/, "$1");
+      }
+    }
+    const words = toks.map((w) => {
       const [adv, g] = shape(w);
       totalWords++;
       return hasLetter(w) ? [w, adv, g] : [w, adv, g, 1]; // 4th field: symbol (۞)
     });
-    const [eadv, eg] = shape(num);
+    const [eadv, eg] = ayahMark(row.aya_no);
     return { a: row.aya_no, p: row.page, w: words, e: [eadv, eg] };
   });
   fs.writeFileSync(`${OUT}/s/${String(s.n).padStart(3, "0")}.json`, JSON.stringify({ n: s.n, ar: s.ar, ayahs }));
@@ -108,7 +178,7 @@ const basmala = BASMALA.split(" ").map((w) => { const [adv, g] = shape(w); retur
 // Hamzat al-wasl drill: the plain alif and the six marked forms (sign above / below / middle × begun with fatha / kasra).
 const plainAlif = shape("ا");
 const waslForms = {};
-for (const h of ["\u064E", "\u0650", "\u064F"]) for (const d of ["\u06EC", "\u06EA", "\u06DF"]) waslForms[h + d] = shape("ا" + h + d);
+for (const d of ["\u06EC", "\u06EA", "\u06DF"]) waslForms[d] = shape("ا" + d);
 
 // Tanween glyphs are split into their two strokes so each can take its own colour:
 // A = the stroke next to the letter (its haraka), B = the other one (the tanween's noon).
@@ -150,6 +220,7 @@ function splitStrokes(d) {
 // Glyph table: outline path (font units, y up) + extents.
 const glyphs = {};
 let yMax = -1e9, yMin = 1e9;
+for (const [id, g] of synth) glyphs[id] = [g.d, g.x0, g.y1, g.x1, g.y0];
 for (const gid of [...used.keys()].sort((a, b) => a - b)) {
   const d = font.glyphToPath(gid);
   const e = font.glyphExtents(gid) || { xBearing: 0, yBearing: 0, width: 0, height: 0 };

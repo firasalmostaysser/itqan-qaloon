@@ -12,7 +12,8 @@
   --danger: #B42318;
   --ok: #1E7B4C;
   --shadow: 0 10px 30px rgba(40, 32, 15, .14);
-  --f-display: "Reem Kufi", "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+  --f-display: "Amiri", "Traditional Arabic", "Times New Roman", serif; /* titles in a traditional naskh, as in the cheikh's books */
+  --f-brand: "Aref Ruqaa", "Amiri", serif;
   --f-ui: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
   --f-naskh: "Amiri", "Traditional Arabic", "Times New Roman", serif;
   --q: 34px;
@@ -44,7 +45,7 @@ button { cursor: pointer; }
 .top-in { max-width: 980px; margin: 0 auto; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; text-decoration: none; color: inherit; }
 .brand-mark { width: 34px; height: 34px; flex: none; }
-.brand h1 { font-family: var(--f-display); font-weight: 600; font-size: 21px; margin: 0; line-height: 1.2; color: var(--zitouna); }
+.brand h1 { font-family: var(--f-brand); font-weight: 700; font-size: 23px; margin: 0; line-height: 1.2; color: var(--zitouna); }
 .brand small { display: block; color: var(--muted); font-size: 11.5px; letter-spacing: .2px; }
 .nav { display: flex; gap: 2px; margin-inline-start: auto; overflow-x: auto; scrollbar-width: none; max-width: 100%; }
 .nav a { padding: 10px 12px 12px; text-decoration: none; color: var(--muted); font-weight: 500; white-space: nowrap; border-bottom: 2px solid transparent; }
@@ -93,7 +94,7 @@ textarea { width: 100%; resize: vertical; }
 .page::before { content: ""; position: absolute; inset: 7px; border: 1.5px solid var(--gold); border-radius: 3px; pointer-events: none; }
 .page::after { content: ""; position: absolute; inset: 11px; border: .5px solid var(--gold); border-radius: 2px; pointer-events: none; opacity: .7; }
 .cartouche { position: relative; margin: 4px auto 14px; max-width: 420px; text-align: center; padding: 8px 18px; border: 1.5px solid var(--gold); border-radius: 40px; background: var(--zitouna-soft); }
-.cartouche h2 { font-family: var(--f-display); font-weight: 500; margin: 0; font-size: 22px; color: var(--zitouna); }
+.cartouche h2 { font-family: var(--f-display); font-weight: 700; margin: 0; font-size: 22px; color: var(--zitouna); }
 .cartouche span { color: var(--muted); font-size: 12.5px; }
 .basmala { text-align: center; font-size: calc(var(--q) * .92); margin-bottom: 6px; }
 .mushaf { font-size: var(--q); text-align: justify; text-align-last: center; direction: rtl; line-height: 1; word-spacing: .05em; }
@@ -108,7 +109,7 @@ textarea { width: 100%; resize: vertical; }
 .k-__hide { opacity: 0; }
 .more { text-align: center; margin-top: 18px; color: var(--muted); }
 .lesson-banner { border: 1px solid var(--gold); background: var(--page); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; display: grid; gap: 8px; }
-.lesson-banner h3 { margin: 0; font-family: var(--f-display); font-weight: 500; color: var(--zitouna); font-size: 18px; }
+.lesson-banner h3 { margin: 0; font-family: var(--f-display); font-weight: 700; color: var(--zitouna); font-size: 18px; }
 .lesson-banner p { margin: 0; max-width: 70ch; }
 .lesson-banner .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
@@ -154,16 +155,16 @@ textarea { width: 100%; resize: vertical; }
 /* Cards / lists */
 .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
 .card { background: var(--page); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 8px; align-content: start; }
-.card h3 { margin: 0; font-family: var(--f-display); font-weight: 500; font-size: 18px; color: var(--zitouna); }
+.card h3 { margin: 0; font-family: var(--f-display); font-weight: 700; font-size: 18px; color: var(--zitouna); }
 .card p { margin: 0; color: var(--muted); font-size: 13.5px; }
 .card .num { color: var(--gold); font-family: var(--f-display); font-size: 14px; }
 .card.done { border-color: var(--ok); }
 .card .chips { display: flex; flex-wrap: wrap; gap: 4px; }
-.page-title { font-family: var(--f-display); font-weight: 500; color: var(--zitouna); font-size: 26px; margin: 6px 0 4px; text-wrap: balance; }
+.page-title { font-family: var(--f-display); font-weight: 700; color: var(--zitouna); font-size: 26px; margin: 6px 0 4px; text-wrap: balance; }
 .lead { color: var(--muted); max-width: 70ch; margin: 0 0 16px; }
 .prose { max-width: 70ch; }
 .prose p { margin: 0 0 12px; }
-.prose h3 { font-family: var(--f-display); font-weight: 500; color: var(--zitouna); margin: 22px 0 8px; font-size: 19px; }
+.prose h3 { font-family: var(--f-display); font-weight: 700; color: var(--zitouna); margin: 22px 0 8px; font-size: 19px; }
 .prose blockquote { margin: 0 0 12px; padding: 10px 14px; border-inline-start: 3px solid var(--gold); background: var(--page); border-radius: 0 8px 8px 0; }
 .colorkey { display: grid; gap: 8px; margin: 10px 0 20px; }
 .colorkey div { display: grid; grid-template-columns: 18px 130px 1fr; gap: 10px; align-items: baseline; }
@@ -173,7 +174,7 @@ textarea { width: 100%; resize: vertical; }
 /* Practice table */
 .ptable-wrap { overflow-x: auto; background: var(--page); border-radius: 10px; border: 1px solid var(--line); }
 .ptable { border-collapse: collapse; width: 100%; min-width: 640px; }
-.ptable th { font-family: var(--f-display); font-weight: 500; font-size: 15px; padding: 10px 8px; border-bottom: 1px solid var(--line); color: var(--hc); }
+.ptable th { font-family: var(--f-display); font-weight: 700; font-size: 15px; padding: 10px 8px; border-bottom: 1px solid var(--line); color: var(--hc); }
 .ptable td { border-inline-start: 1px solid var(--line); vertical-align: top; padding: 6px; font-size: 26px; min-width: 100px; }
 .ptable td:first-child { border-inline-start: 0; }
 .ptable .cell { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 80px; }
@@ -243,7 +244,7 @@ textarea { width: 100%; resize: vertical; }
 @media print {
   .top, .bar, .legend, .foot a, #sheetRoot, #stageRoot, .toast, .lesson-banner, .more, .srec, body::before { display: none !important; }
   body { background: #fff; padding: 0; } .page { box-shadow: none; } main { max-width: none; padding: 0; }
-  .view:not(#v-mushaf) { display: none !important; } .mushaf { font-size: 22pt; }
+  body:not(.print-report) .view:not(#v-mushaf) { display: none !important; } .mushaf { font-size: 22pt; }
   .w, .ae { break-inside: avoid; } * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 
@@ -255,7 +256,7 @@ textarea { width: 100%; resize: vertical; }
 .scard .snum { grid-row: span 2; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--zitouna-soft); color: var(--zitouna); font-size: 13px; font-variant-numeric: tabular-nums; }
 .scard .sname { font-family: var(--f-display); font-size: 17px; color: var(--zitouna); }
 .scount { color: var(--muted); font-size: 12.5px; }
-h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); font-size: 18px; margin: 4px 0 10px; }
+h3.sec { font-family: var(--f-display); font-weight: 700; color: var(--gold); font-size: 18px; margin: 4px 0 10px; }
 .allsurahs summary { cursor: pointer; color: var(--zitouna); padding: 8px 0 12px; }
 .shead { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin-bottom: 10px; }
 .stabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 calc(-1 * max(16px, env(safe-area-inset-left, 0px))) 12px; padding-inline: max(16px, env(safe-area-inset-left, 0px)); }
@@ -326,3 +327,96 @@ h3.sec { font-family: var(--f-display); font-weight: 500; color: var(--gold); fo
 .scard.alldone { border-color: var(--ok); }
 .path ol { list-style: arabic-indic; }
 .path a.btn { color: inherit; text-decoration: none; }
+
+/* The page printed as a mushaf page: an ornamental frame like the cheikh's books, his title above and the colour key below. */
+.print-only { display: none; }
+@page { size: A4; margin: 9mm; }
+@media print {
+  .print-only { display: block; }
+  #v-mushaf .page { border: 22px solid transparent; border-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 90' width='90' height='90'%3E%3Cg fill='none' stroke='%231d5f5a'%3E%3Crect x='1.5' y='1.5' width='87' height='87' stroke-width='3'/%3E%3Crect x='27' y='27' width='36' height='36' stroke-width='2'/%3E%3Crect x='6' y='6' width='78' height='78' stroke-width='.8'/%3E%3C/g%3E%3Cg fill='%2389c9c4' stroke='%231d5f5a' stroke-width='1.2'%3E%3Ccircle cx='16.5' cy='16.5' r='6'/%3E%3Ccircle cx='45' cy='16.5' r='6'/%3E%3Ccircle cx='73.5' cy='16.5' r='6'/%3E%3Ccircle cx='16.5' cy='45' r='6'/%3E%3Ccircle cx='73.5' cy='45' r='6'/%3E%3Ccircle cx='16.5' cy='73.5' r='6'/%3E%3Ccircle cx='45' cy='73.5' r='6'/%3E%3Ccircle cx='73.5' cy='73.5' r='6'/%3E%3C/g%3E%3Cg fill='%231d5f5a'%3E%3Ccircle cx='16.5' cy='16.5' r='2'/%3E%3Ccircle cx='45' cy='16.5' r='2'/%3E%3Ccircle cx='73.5' cy='16.5' r='2'/%3E%3Ccircle cx='16.5' cy='45' r='2'/%3E%3Ccircle cx='73.5' cy='45' r='2'/%3E%3Ccircle cx='16.5' cy='73.5' r='2'/%3E%3Ccircle cx='45' cy='73.5' r='2'/%3E%3Ccircle cx='73.5' cy='73.5' r='2'/%3E%3C/g%3E%3C/svg%3E") 30 round; border-radius: 0; padding: 14px 18px 18px; }
+  #v-mushaf .page::before, #v-mushaf .page::after { display: none; }
+  .print-head { display: flex !important; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #1d5f5a; margin-bottom: 6px; padding-bottom: 2px; font-family: var(--f-display); color: #1d5f5a; }
+  .print-head b { font-size: 18pt; font-weight: 500; }
+  .print-key { display: flex !important; flex-wrap: wrap; justify-content: center; gap: 4px 14px; border: 1.5px solid #1d5f5a; border-radius: 4px; padding: 3px 8px; margin-top: 8px; font-size: 10pt; }
+  .print-key span { display: inline-flex; align-items: center; gap: 5px; color: var(--c); font-weight: 600; }
+  .print-key i { width: 10px; height: 10px; border-radius: 50%; background: var(--c); }
+  body.print-report .view:not(#v-students) { display: none !important; }
+  body.print-report #v-students .shead, body.print-report #v-students .admin-tabs, body.print-report .noprint { display: none !important; }
+  body.print-report .report { border: 14px solid transparent; border-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 90' width='90' height='90'%3E%3Cg fill='none' stroke='%231d5f5a'%3E%3Crect x='1.5' y='1.5' width='87' height='87' stroke-width='3'/%3E%3Crect x='27' y='27' width='36' height='36' stroke-width='2'/%3E%3Crect x='6' y='6' width='78' height='78' stroke-width='.8'/%3E%3C/g%3E%3Cg fill='%2389c9c4' stroke='%231d5f5a' stroke-width='1.2'%3E%3Ccircle cx='16.5' cy='16.5' r='6'/%3E%3Ccircle cx='45' cy='16.5' r='6'/%3E%3Ccircle cx='73.5' cy='16.5' r='6'/%3E%3Ccircle cx='16.5' cy='45' r='6'/%3E%3Ccircle cx='73.5' cy='45' r='6'/%3E%3Ccircle cx='16.5' cy='73.5' r='6'/%3E%3Ccircle cx='45' cy='73.5' r='6'/%3E%3Ccircle cx='73.5' cy='73.5' r='6'/%3E%3C/g%3E%3Cg fill='%231d5f5a'%3E%3Ccircle cx='16.5' cy='16.5' r='2'/%3E%3Ccircle cx='45' cy='16.5' r='2'/%3E%3Ccircle cx='73.5' cy='16.5' r='2'/%3E%3Ccircle cx='16.5' cy='45' r='2'/%3E%3Ccircle cx='73.5' cy='45' r='2'/%3E%3Ccircle cx='16.5' cy='73.5' r='2'/%3E%3Ccircle cx='45' cy='73.5' r='2'/%3E%3Ccircle cx='73.5' cy='73.5' r='2'/%3E%3C/g%3E%3C/svg%3E") 30 round; padding: 10px 14px; }
+}
+
+/* School: join, live lesson, cheikh dashboard, reports */
+.card.join input#jName { min-width: 180px; }
+.card.live, .card.cheikh { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin-bottom: 14px; }
+.card.live .grow { color: var(--muted); font-size: 13.5px; }
+.card + .card { margin-top: 12px; }
+.joincode { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.joincode b { font-family: ui-monospace, monospace; font-size: 26px; letter-spacing: .18em; color: var(--zitouna); background: var(--zitouna-soft); border-radius: 8px; padding: 2px 12px; }
+.stats.s4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.stats.s5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (max-width: 560px) { .stats.s4, .stats.s5 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.bars { display: grid; gap: 6px; margin-bottom: 12px; }
+.bars > div { display: grid; grid-template-columns: minmax(120px, 210px) 1fr 48px; gap: 10px; align-items: center; font-size: 13.5px; }
+.bars i { height: 10px; border-radius: 6px; background: linear-gradient(90deg, var(--bc, var(--zitouna)) var(--w), color-mix(in srgb, var(--line) 70%, transparent) var(--w)); }
+.bars b { text-align: end; font-variant-numeric: tabular-nums; }
+.good { --bc: var(--ok); } .mid { --bc: var(--gold); } .low { --bc: var(--danger); }
+.matrix td.sc { text-align: center; font-variant-numeric: tabular-nums; font-weight: 600; }
+.matrix td.sc.good { background: color-mix(in srgb, var(--ok) 18%, transparent); }
+.matrix td.sc.mid { background: color-mix(in srgb, var(--gold) 20%, transparent); }
+.matrix td.sc.low { background: color-mix(in srgb, var(--danger) 16%, transparent); }
+.atable input, .atable select { font: inherit; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: inherit; max-width: 200px; }
+.atable tr.off { opacity: .55; }
+.nowrap { white-space: nowrap; }
+.linkbtn.danger, .btn.ghost.danger { color: var(--danger); }
+.sesslist { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.sesslist button { border: 1px solid var(--line); background: var(--page); border-radius: 999px; padding: 6px 12px; font-size: 13px; }
+.sesslist button[aria-pressed="true"] { background: var(--zitouna); color: var(--on-accent); border-color: var(--zitouna); }
+.attlist { display: grid; gap: 6px; }
+.att { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); padding: 6px 0; }
+.att .seg button { font-size: 12.5px; }
+.att .seg button[aria-pressed="true"][data-st="present"] { background: var(--ok); color: #fff; }
+.att .seg button[aria-pressed="true"][data-st="late"] { background: var(--gold); color: #fff; }
+.att .seg button[aria-pressed="true"][data-st="absent"] { background: var(--danger); color: #fff; }
+.att .seg button[aria-pressed="true"][data-st="excused"] { background: var(--muted); color: #fff; }
+.chip.att-present { border-color: var(--ok); } .chip.att-late { border-color: var(--gold); } .chip.att-absent { border-color: var(--danger); color: var(--danger); }
+.evgrid { display: grid; grid-template-columns: minmax(140px, 220px) 1fr; gap: 8px 12px; align-items: center; }
+@media (max-width: 560px) { .evgrid { grid-template-columns: 1fr; } }
+.evbtns { display: flex; flex-wrap: wrap; gap: 3px; }
+.evbtns button { width: 32px; height: 32px; border: 1px solid var(--line); border-radius: 8px; background: var(--page); font-variant-numeric: tabular-nums; }
+.evbtns button[aria-pressed="true"] { background: var(--zitouna); color: var(--on-accent); border-color: var(--zitouna); }
+textarea.full { width: 100%; font: inherit; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--page); color: inherit; }
+.report { display: grid; gap: 4px; }
+.rep-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px; border-bottom: 2px solid var(--zitouna); padding-bottom: 4px; margin-bottom: 6px; }
+.rep-head h3 { margin: 0; font-family: var(--f-display); font-weight: 700; color: var(--zitouna); font-size: 20px; }
+.rep-head span { color: var(--muted); font-size: 13px; }
+.lvl .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.lvl .chip .linkbtn { text-decoration: none; padding: 0 2px; }
+
+.page-title, h3.sec, .card h3, .rep-head h3, .print-head b { font-weight: 700; }
+.print-head b { font-family: var(--f-brand); }
+
+/* the cheikh's first drill: the surah in faint outline, to be written over with its dabt */
+.trace-only { display: none; }
+@media print {
+  body.trace .trace-only { display: inline; font-family: var(--f-display); font-weight: 700; color: #1d5f5a; }
+  body.trace #v-mushaf .qw use { fill: none !important; stroke: #a9a9a9; stroke-width: 9px; }
+  body.trace #v-mushaf .ae .qw use { fill: #1d5f5a !important; stroke: none; }
+  body.trace #v-mushaf .mushaf { line-height: 2.1; }
+}
+/* the cheikh's tables */
+.ttable td { vertical-align: middle; }
+.ttable td.tw { font-size: 30px; white-space: nowrap; }
+.ttable td.why { font-size: 13px; color: var(--muted); max-width: 320px; white-space: normal; }
+.ttable tr.right td:first-child { box-shadow: inset -4px 0 0 var(--ok); }
+.ttable tr.wrong td:first-child { box-shadow: inset -4px 0 0 var(--danger); }
+.hcard { margin-bottom: 10px; }
+.hcard .hl { font-family: var(--f-naskh); font-size: 28px; color: var(--ink); margin-inline-start: 8px; }
+.pairs { display: flex; flex-wrap: wrap; gap: 6px; }
+.pairs.ok, select.ok { outline: 2px solid var(--ok); outline-offset: 2px; border-radius: 8px; }
+.pairs.bad, select.bad { outline: 2px solid var(--danger); outline-offset: 2px; border-radius: 8px; }
+.seg.wrap { flex-wrap: wrap; }
+.hcard p.why { font-size: 13px; margin: 6px 0 0; }
+.letters { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; }
+.letters input { font: inherit; padding: 3px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: inherit; }
+.lvl .chip[aria-pressed="true"] { background: var(--zitouna); color: var(--on-accent); border-color: var(--zitouna); }
+@media print { .foot { display: none !important; } }

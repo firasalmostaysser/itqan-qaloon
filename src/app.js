@@ -3,7 +3,7 @@
   const T = window.Tajweed;
   const $ = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
-  const AR = (n) => String(n).replace(/\d/g, (d) => "٠١٢٣٤٥٦٧٨٩"[d]);
+  const AR = (n) => String(n); // numbers in Western digits (1 2 3), as in the cheikh's books
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const plain = (t) => t.replace(/[ً-ٰٟۖ-ۭـ‏]/g, "");
   const LS = {
@@ -49,8 +49,8 @@
   let anVersion = 0;
 
   const ui = {
-    surah: LS.get("surah", 1), mode: LS.get("mode", null), size: LS.get("size", 34),
-    hidden: new Set(LS.get("hidden", [])), lesson: LS.get("lesson", null), rendered: 0, two: LS.get("two", false),
+    surah: LS.get("surah", 1), size: LS.get("size", 34),
+    hidden: new Set(LS.get("hidden", [])), lesson: null, rendered: 0,
   };
   const P = { surah: 111, ai: -1, mode: "show", picked: null, placed: {}, checked: false };
 
@@ -94,7 +94,7 @@
     const rules = ALLCATS.map((c) => `.qw use.k-${c.id}{fill:var(--c-${c.id})}`).join("");
     $("#catvars").textContent = `:root{${L.join(";")}}@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){${D.join(";")}}}:root[data-theme="dark"]{${D.join(";")}}${rules}`;
   }
-  const mode = () => ui.mode || (STATE.settings && STATE.settings.mode) || "waqf";
+  const mode = () => (STATE.settings && STATE.settings.mode) || "waqf"; // the cheikh's method: a stop on every ayah end
   function engineSettings(m) {
     const st = STATE.settings || {};
     return { mode: m || mode(), finalHaraka: st.finalHaraka || "keep", 
@@ -219,18 +219,7 @@
     if (sh != null && hk != null) return [(colors && colors[sh]) || null, (colors && colors[hk]) || null]; // shadda, then its haraka
     const k = pickCat(colors, idxs); return [k, k];
   }
-  /** Two-colour display: when a second visible rule meets on the same part, its colour fills the other half. */
-  const GRADS = new Set();
-  function paint(cat, colors, idxs, second) {
-    if (!cat) return "";
-    if (cat === "__hide" || !ui.two || !colors || !colors.alt || !idxs) return ` class="k-${cat}"`;
-    let alt = null, br = 1e9;
-    for (const j of idxs) { const a = colors.alt[second ? j + "b" : j]; if (a && a !== cat) { const r = RANK.has(a) ? RANK.get(a) : 900; if (r < br) { br = r; alt = a; } } }
-    if (!alt) return ` class="k-${cat}"`;
-    const id = `gr-${cat}-${alt}`;
-    if (!GRADS.has(id)) { GRADS.add(id); $("#ggrads").innerHTML += (`<linearGradient id="${id}" x1="0" y1="0" x2="1" y2="0"><stop offset="50%" style="stop-color:var(--c-${alt})"/><stop offset="50%" style="stop-color:var(--c-${cat})"/></linearGradient>`); }
-    return ` class="k-${cat}" style="fill:url(#${id})"`;
-  }
+  const paint = (cat) => (cat ? ` class="k-${cat}"` : "");
   /** Every drawn part of a word with the colour it should take: Map "cluster" | "cluster b" → category. */
   function partsOf(wd, colors) {
     const text = wd[0], g = wd[2], cov = coverage(text, g), out = new Map();
@@ -253,8 +242,10 @@
       const gid = g[i], c = g[i + 1], x = g[i + 2], y = g[i + 3];
       const e = GLY[gid];
       if (!e || !e[0]) continue;
-      if (alt && c === 0) {
-        for (let j = 0; j < alt[1].length; j += 4) { const e2 = GLY[alt[1][j]]; if (e2 && e2[0]) uses += `<use href="#g${alt[1][j]}" transform="translate(${x + alt[1][j + 2]} ${-alt[1][j + 3]}) scale(1 -1)"${alt[2] ? ` class="${alt[2]}"` : ""}/>`; }
+      if (alt && c <= 2) { // the wasl head: the alif (cluster 0) and its dot (cluster 2) give way to the student's form
+        if (c !== 0) continue;
+        let ax = 0; for (let j = 0; j < alt[1].length; j += 4) if (alt[1][j + 1] === 0) ax = alt[1][j + 2];
+        for (let j = 0; j < alt[1].length; j += 4) { const e2 = GLY[alt[1][j]]; if (e2 && e2[0]) uses += `<use href="#g${alt[1][j]}" transform="translate(${x - ax + alt[1][j + 2]} ${-alt[1][j + 3]}) scale(1 -1)"${alt[2] ? ` class="${alt[2]}"` : ""}/>`; }
         minX = Math.min(minX, x + e[1]); maxX = Math.max(maxX, x + e[3]);
         continue;
       }
@@ -263,13 +254,11 @@
       const idxs = cov.get(c), hit = HIT ? ` data-c="${c}"` : "", tf = `transform="translate(${x} ${-y}) scale(1 -1)"`;
       if (e[5] && idxs) {
         const [ca, cb] = partCats(text, c, idxs, colors, true);
-        const tn = idxs.filter((j) => TAN_CH.includes(text[j])), solo = (ch) => idxs.filter((j) => ch.includes(text[j]));
-        const ia = tn.length ? tn : solo("\u0651").length ? solo("\u0651") : null, ib = tn.length ? tn : solo("\u064E\u064F\u0650").length && solo("\u0651").length ? solo("\u064E\u064F\u0650") : null;
-        uses += `<use href="#g${gid}a" ${tf}${paint(ca, colors, ia)}${hit}/><use href="#g${gid}b" ${tf}${paint(cb, colors, ib, tn.length > 0)}${hit}${HIT ? ' data-s="b"' : ""}/>`;
+        uses += `<use href="#g${gid}a" ${tf}${paint(ca)}${hit}/><use href="#g${gid}b" ${tf}${paint(cb)}${hit}${HIT ? ' data-s="b"' : ""}/>`;
         continue;
       }
       const cat = partCats(text, c, idxs, colors, false)[0];
-      uses += `<use href="#g${gid}" ${tf}${paint(cat, colors, idxs)}${hit}/>`;
+      uses += `<use href="#g${gid}" ${tf}${paint(cat)}${hit}/>`;
     }
     if (minX > maxX) { minX = 0; maxX = adv || 1; }
     const pad = 20, w = maxX - minX + pad * 2, h = YMAX - YMIN;
@@ -282,19 +271,18 @@
     t.textContent = msg; t.hidden = false;
     clearTimeout(toast.t); toast.t = setTimeout(() => (t.hidden = true), ms || 3800);
   }
-  const ROUTES = ["home", "mushaf", "lessons", "practice", "progress", "students", "about", "admin"];
+  const ROUTES = ["home", "mushaf", "practice", "progress", "students", "about", "admin"];
   function route() {
-    if ((location.hash || "").startsWith("#r=")) { importReport(); return; }
+    readSchoolLink();
     let r = (location.hash || "#home").slice(1);
     if (!ROUTES.includes(r)) r = "home";
-    const sl = $("#studentsLink"); if (sl) sl.hidden = !CAN_EDIT && !Object.keys(LS.get("reports", {})).length;
+    const sl = $("#studentsLink"); if (sl) sl.hidden = !SK();
     if (r === "admin" && !CAN_EDIT) r = "admin";
     for (const v of $$(".view")) v.hidden = v.id !== "v-" + r;
     for (const a of $$(".nav a")) a.setAttribute("aria-current", a.getAttribute("href") === "#" + r ? "page" : "false");
     closeSheet();
     if (r === "home") renderHome();
     else if (r === "mushaf") renderMushaf();
-    else if (r === "lessons") renderLessons();
     else if (r === "practice") renderPractice();
     else if (r === "progress") renderProgress();
     else if (r === "students") renderStudents();
@@ -307,33 +295,42 @@
 
   /* ---------------- home: the surahs, and the tabs of one surah ---------------- */
   function renderHome() {
-    const best = bestScores(), doneOf = (n) => DRILLS.filter((k) => (best.get(n + "|" + k) || 0) >= 80).length;
-    const card = (s) => `<button class="scard${doneOf(s.n) === 4 ? " alldone" : ""}" data-s="${s.n}"><span class="snum">${AR(s.n)}</span><span class="sname">${esc(s.ar)}</span><span class="scount">${AR(s.count)} ${s.count > 10 ? "آية" : "آيات"}${doneOf(s.n) ? ` · <b class="sdone">✓ ${AR(doneOf(s.n))}/٤</b>` : ""}</span></button>`;
+    const best = bestScores(), doneOf = (n) => drillsFor(n).filter((k) => (best.get(n + "|" + k) || 0) >= 80).length;
+    const card = (s) => { const d = doneOf(s.n), all = drillsFor(s.n).length; return `<button class="scard${d === all ? " alldone" : ""}" data-s="${s.n}"><span class="snum">${AR(s.n)}</span><span class="sname">${esc(s.ar)}</span><span class="scount">${AR(s.count)} ${s.count > 10 ? "آية" : "آيات"}${d ? ` · <b class="sdone">✓ ${AR(d)}/${AR(all)}</b>` : ""}</span></button>`; };
+    const me = TOK() ? ME : null, lvl = me && me.level, cohort = me && me.cohort;
     const last = LS.get("attempts", []).slice(-1)[0], cont = last ? META.surahs[last.s - 1] : null;
     const juz = META.surahs.filter((s) => s.n >= 78), rest = META.surahs.filter((s) => s.n > 1 && s.n < 78);
-    $("#v-home").innerHTML = `<div class="hero"><h2 class="page-title">دورة الطريق إلى الإتقان</h2>
-      <p class="lead">بطريقة الشيخ المقرئ محمّد بن عبد الله جوّاد · برواية قالون عن نافع. اختر سورة لترى القواعد عليها وتمارينها: التلوين، وأزمنة الحروف، وأحكام الميم والنون الساكنتين، وهمزة الوصل.</p></div>
-      ${lessonLinks().length ? `<div class="remote"><h3 class="sec" style="margin-top:0">الدروس عن بُعد مع الشيخ</h3><div class="bar">${lessonLinks().map((l) => `<a class="btn primary" target="_blank" rel="noopener" href="${esc(l.url)}">${l.icon} ${esc(l.label)}</a>`).join("")}</div><p>افتح المصحف الملوّن هنا وشاركه على الشاشة أثناء الحصة. ولتسميع تلاوتك خارج الحصة: سجّلها من صفحة السورة ثم أرسلها إلى الشيخ.</p></div>` : ""}
-      <div class="path"><h3 class="sec" style="margin-top:0">طريقك في كل سورة</h3>
-        <ol><li><b>القواعد على السورة</b>اقرأ السورة ملوّنة، واضغط الكلمة لتكبيرها وسماع نطق الشيخ.</li><li><b>التلوين</b>لوّن الحروف والحركات بنفسك.</li><li><b>أزمنة الحروف</b>ضع كل كلمة في عمود حكمها.</li><li><b>الميم والنون</b>أحكام النون الساكنة والتنوين والميم.</li><li><b>همزة الوصل</b>اختر شكل كل همزة وصل.</li><li><b>الامتحان</b>أعد التمارين في «وضع الامتحان»، ثم أرسل نتائجك إلى الشيخ من «نتائجي».</li></ol>
-        <div class="bar">${cont ? `<button class="btn primary" data-s="${cont.n}">تابع: سورة ${esc(cont.ar)}</button>` : ""}<button class="btn" id="tourBtn">جولة تعريفية</button><a class="btn" href="#progress">نتائجي</a></div></div>
-      <div class="sgrid one">${card(META.surahs[0])}</div>
-      <h3 class="sec">جزء عمّ</h3><div class="sgrid">${juz.map(card).join("")}</div>
+    const next = me && (me.sessions || []).length ? me.sessions[0] : null;
+    const allSurahs = `<div class="sgrid one">${card(META.surahs[0])}</div><h3 class="sec">جزء عمّ</h3><div class="sgrid">${juz.map(card).join("")}</div>
       <details class="allsurahs"><summary>باقي سور القرآن</summary><div class="sgrid">${rest.map(card).join("")}</div></details>`;
-    $("#tourBtn").onclick = () => startTour(CAN_EDIT ? "cheikh" : "student");
-    $$("#v-home [data-s]").forEach((b) => (b.onclick = () => { ui.surah = +b.dataset.s; LS.set("surah", ui.surah); ui.lesson = null; LS.set("lesson", null); location.hash = "#mushaf"; }));
+    $("#v-home").innerHTML = `<div class="hero"><h2 class="page-title">${me ? `السلام عليكم يا ${esc(me.student.name)}` : "أكاديمية الزيتونة للقرآن الكريم"}</h2>
+      <p class="lead">${me ? `${lvl && lvl.program ? esc(lvl.program) + " · " : ""}${lvl ? esc(lvl.name) : ""}${cohort ? " · " + esc(cohort.name) : ""}` : "دورة «الطريق إلى الإتقان» بطريقة الشيخ المقرئ محمّد بن عبد الله جوّاد · برواية قالون عن نافع."}</p></div>
+      ${SK() ? `<div class="card cheikh"><b>أهلاً بك شيخنا.</b> <a class="btn primary" href="#students">متابعة الطلاب</a></div>` : ""}
+      ${me && cohort ? `<div class="card live">${cohort.live_url ? `<a class="btn primary" target="_blank" rel="noopener" href="${esc(cohort.live_url)}">🎥 ادخل الحصة المباشرة</a>` : ""}
+        <span class="grow">${cohort.schedule ? "موعد الحصص: " + esc(cohort.schedule) : ""}${next ? `${cohort.schedule ? " · " : ""}آخر حصة: ${fmtDate(next.at)}${next.surah ? " · " + esc(sName(next.surah)) : ""}` : ""}</span></div>` : ""}
+      ${!me ? joinCardHTML() : ""}
+      ${lessonLinks().length ? `<div class="card live">${lessonLinks().map((l) => `<a class="btn" target="_blank" rel="noopener" href="${esc(l.url)}">${l.icon} ${esc(l.label)}</a>`).join("")}</div>` : ""}
+      ${cont ? `<p><button class="btn" data-s="${cont.n}">↩ تابع من حيث توقّفت: سورة ${esc(cont.ar)}</button></p>` : ""}
+      ${lvl && lvl.surahs.length ? `<h3 class="sec">سور ${esc(lvl.name)}</h3><div class="sgrid">${lvl.surahs.map((n) => META.surahs[n - 1]).filter(Boolean).map(card).join("")}</div>
+        <details class="allsurahs"><summary>تدرّب على سور أخرى</summary>${allSurahs}</details>` : allSurahs}
+      <p class="note">في كل سورة: اقرأ الدرس ملوّناً واضغط الكلمة لتسمع نطق الشيخ، ثم تمارينه بالترتيب، ثم امتحن نفسك في «وضع الامتحان».</p>`;
+    bindJoin($("#v-home"));
+    $$("#v-home [data-s]").forEach((b) => (b.onclick = () => { ui.surah = +b.dataset.s; LS.set("surah", ui.surah); location.hash = "#mushaf"; }));
   }
-  const STABS = [["show", "القواعد على السورة"], ["paint", "التلوين"], ["time", "أزمنة الحروف"], ["nun", "الميم والنون"], ["wasl", "همزة الوصل"]];
+  const STABS = [["show", "الدرس"], ["paint", "التلوين"], ["time", "أزمنة الحروف"], ["nun", "النون والميم"], ["madd", "المدود"], ["ra", "الراءات"], ["huruf", "المخارج والصفات"], ["wasl", "همزة الوصل"]];
   /** Best score per surah and drill, from the attempts kept on this device: "surah|kind" → percent. */
   function bestScores() { const m = new Map(); for (const a of LS.get("attempts", [])) { if (!a.n) continue; const k = a.s + "|" + a.k, pc = Math.round((a.r / a.n) * 100) - (a.x ? 1 : 0); if (!m.has(k) || m.get(k) < pc) m.set(k, pc); } return m; }
-  const DRILLS = ["paint", "time", "nun", "wasl"];
-  const surahTabs = (active) => { const b = bestScores(), n = location.hash === "#practice" ? P.surah : ui.surah; return `<div class="stabs" id="stabs">${STABS.map(([k, l], i) => { const pc = b.get(n + "|" + k); return `<button data-st="${k}" aria-pressed="${active === k}"><span class="stepn">${AR(i + 1)}</span>${l}${pc != null ? `<span class="done${pc >= 80 ? " ok" : ""}">${pc >= 80 ? "✓" : AR(Math.max(0, pc)) + "٪"}</span>` : ""}</button>`; }).join("")}</div>`; };
+  const DRILLS = ["paint", "time", "nun", "wasl"], ALL_DRILLS = ["paint", "time", "nun", "madd", "ra", "huruf", "wasl"];
+  /** The drills of a level, as the cheikh chose them (all of them when he chose none). */
+  const lvlDrills = (l) => { const d = l && l.config && l.config.drills; return d && d.length ? ALL_DRILLS.filter((k) => d.includes(k)) : ALL_DRILLS; };
+  const drillsFor = (n) => { const l = TOK() && ME && ME.level; return l && l.surahs.includes(n) ? lvlDrills(l) : ALL_DRILLS; };
+  const surahTabs = (active) => { const b = bestScores(), n = location.hash === "#practice" ? P.surah : ui.surah; const ds = drillsFor(n); return `<div class="stabs" id="stabs">${STABS.filter(([k]) => k === "show" || ds.includes(k)).map(([k, l], i) => { const pc = b.get(n + "|" + k); return `<button data-st="${k}" aria-pressed="${active === k}"><span class="stepn">${AR(i + 1)}</span>${l}${pc != null ? `<span class="done${pc >= 80 ? " ok" : ""}">${pc >= 80 ? "✓" : AR(Math.max(0, pc)) + "%"}</span>` : ""}</button>`; }).join("")}</div>`; };
   function bindSurahTabs(root) {
     $$("#stabs button", root).forEach((b) => (b.onclick = () => {
       const k = b.dataset.st;
       if (k === "show") { ui.surah = P.surah && (location.hash === "#practice") ? P.surah : ui.surah; LS.set("surah", ui.surah); location.hash = "#mushaf"; return; }
       if (location.hash !== "#practice") { P.surah = ui.surah; P.ai = defAi(P.surah); }
-      P.kind = k; if (k !== "paint") P.mode = P.mode || "show"; resetExercise();
+      P.kind = k; P.exam = false; if (k !== "paint") P.mode = P.mode || "show"; resetExercise();
       if (location.hash === "#practice") renderPractice(); else location.hash = "#practice";
     }));
   }
@@ -342,21 +339,16 @@
   /* ---------------- product tour ---------------- */
   const TOURS = {
     student: [
-      ["مرحباً بك في «الطريق إلى الإتقان»", "تتعلّم هنا تلاوة القرآن برواية قالون بطريقة الألوان للشيخ محمّد بن عبد الله جوّاد. الجولة ستّ خطوات قصيرة."],
-      ["١ · اختر سورة", "من صفحة «السور» اختر سورة. تُفتح ملوّنةً: كل لون حكم، ومفتاح الألوان فوق المصحف، وتستطيع إخفاء أي لون للمراجعة."],
-      ["٢ · اضغط على الكلمة", "تكبر الكلمة وتظهر أحكام كل حرف فيها، ويُعرض فيديو الشيخ وهو ينطقها إن كان قد سجّلها. «شاشة كاملة» تعرضها بحجم أكبر مع التكرار."],
-      ["٣ · تمرّن", "لكل سورة أربعة تمارين مرتّبة: التلوين، أزمنة الحروف، الميم والنون، همزة الوصل. القاعدة مكتوبة عند كل خانة. تتمرّن على السورة كلها أو آية آية."],
-      ["٤ · امتحن نفسك", "اضغط «وضع الامتحان» في أي تمرين: لا يُعرض الحل، والتسليم مرة واحدة. علامة ✓ تظهر على التمرين إذا بلغت ٨٠٪."],
-      ["٥ · أرسل نتائجك إلى الشيخ", "في «نتائجي» ترى محاولاتك وما تحتاج التركيز عليه. اكتب اسمك واضغط «أرسل نتائجي إلى الشيخ» ليصله رابط عبر تيليغرام أو واتساب."],
-      ["٦ · الدروس والتسجيل", "روابط حصص الشيخ عن بُعد تظهر في صفحة «السور». ومن صفحة السورة تسجّل تلاوتك بصوتك ثم تسمعها أو ترسلها."],
+      ["مرحباً بك في «الطريق إلى الإتقان»", "تتعلّم هنا تلاوة القرآن برواية قالون بطريقة الألوان للشيخ محمّد بن عبد الله جوّاد."],
+      ["1 · انضمّ إلى دفعتك", "اكتب رمز الدفعة الذي أعطاك إياه الشيخ واسمك في الصفحة الرئيسية، فتظهر لك سور مستواك ورابط الحصة المباشرة."],
+      ["2 · اقرأ ثم تمرّن", "افتح السورة: تراها ملوّنة، واضغط أي كلمة لتكبيرها وسماع نطق الشيخ. ثم تمرّن على خطواتها: التلوين، أزمنة الحروف، الميم والنون، همزة الوصل."],
+      ["3 · امتحن نفسك", "«وضع الامتحان» يخفي الحل ويقبل التسليم مرة واحدة. نتائجك وحضورك وتقييم الشيخ في «نتائجي»، وتصل نتائجك إلى الشيخ وحدها."],
     ],
     cheikh: [
-      ["مرحباً بك شيخنا", "هذه جولة قصيرة في أدواتك. كل ما تغيّره يصل إلى الطلاب بعد الضغط على «حفظ ونشر للطلاب»."],
-      ["١ · الألوان والأحكام", "في «لوحة الشيخ» تغيّر اسم كل حكم وشرحه ولونه وترتيبه، وتضيف حكماً جديداً."],
-      ["٢ · تصحيح كلمة", "افتح المصحف واضغط أي كلمة: يظهر لك محرّر تغيّر به لون أي حرف أو حركة، لهذا الموضع وحده أو لكل مواضع الكلمة."],
-      ["٣ · تسجيل النطق", "من الكلمة نفسها اضغط «تسجيل نطق الكلمة بالكاميرا» وسجّل مباشرة. يراه الطالب حين يضغط الكلمة."],
-      ["٤ · الدروس عن بُعد", "في «ضوابط المحرّك» ضع روابط Google Meet أو Zoom أو تيليغرام، سطراً لكل رابط، فتظهر أزراراً للطلاب."],
-      ["٥ · متابعة الطلاب", "يرسل لك الطالب رابط نتائجه. افتحه على هذا الجهاز فيُحفظ في صفحة «الطلاب»: محاولاته، امتحاناته، وما يجب التركيز عليه، والأخطاء المشتركة بين الطلاب."],
+      ["مرحباً بك شيخنا", "ثلاث صفحات لك: «دروسي» كما يراها الطالب، و«الطلاب» للمتابعة، و«الإعدادات» للألوان والفيديو."],
+      ["1 · المستويات والدفعات", "في «الطلاب» أضف سور كل مستوى، وأنشئ دفعة واختر مستواها، ثم أرسل رابط الدفعة للطلاب عبر واتساب أو تيليغرام."],
+      ["2 · الحضور والتقييم", "في كل حصة سجّل الحضور بضغطة، وقيّم تلاوة الطالب على سبعة معايير من 10."],
+      ["3 · التقارير", "«نظرة عامة» تجمع الحضور والتمارين والتقييم والأخطاء المشتركة، ولكل طالب تقرير تطبعه PDF."],
     ],
   };
   function startTour(kind) {
@@ -377,7 +369,7 @@
   }
   function maybeTour() {
     if ((location.hash || "").length > 1 && !/^#(home|mushaf)$/.test(location.hash)) return;
-    if (CAN_EDIT) { if (!LS.get("tour:cheikh", 0)) startTour("cheikh"); }
+    if (CAN_EDIT || SK()) { if (!LS.get("tour:cheikh", 0)) startTour("cheikh"); }
     else if (!LS.get("tour:student", 0)) startTour("student");
   }
 
@@ -385,14 +377,13 @@
   function legendHTML() {
     const cats = availableCats();
     return cats.map((c) => `<button class="chip" data-cat="${c.id}" aria-pressed="${!ui.hidden.has(c.id)}" style="--dot:var(--c-${c.id})" title="${esc(c.short || "")}"><span class="dot"></span>${esc(c.name)}</button>`).join("")
-      + `<span class="sep"></span><button class="chip" data-two aria-pressed="${!!ui.two}" title="إذا التقى حكمان على الجزء نفسه ظهر بلونين: لون الحكم المقدَّم ولون الذي يليه"><span class="dot" style="background:linear-gradient(90deg,var(--c-ghunna) 50%,var(--c-bayni) 50%)"></span>التقاء حكمين بلونين</button><span class="legend-all"><button class="linkbtn" data-legend="all">إظهار الكل</button><button class="linkbtn" data-legend="none">إخفاء الكل</button></span>`;
+      + `<span class="legend-all"><button class="linkbtn" data-legend="all">إظهار الكل</button><button class="linkbtn" data-legend="none">إخفاء الكل</button></span>`;
   }
   function bindLegend(root, rerender) {
     root.addEventListener("click", (e) => {
       const chip = e.target.closest(".chip[data-cat]");
-      const all = e.target.closest("[data-legend]"), two = e.target.closest("[data-two]");
-      if (two) { ui.two = !ui.two; LS.set("two", ui.two); }
-      else if (chip) { const id = chip.dataset.cat; ui.hidden.has(id) ? ui.hidden.delete(id) : ui.hidden.add(id); }
+      const all = e.target.closest("[data-legend]");
+      if (chip) { const id = chip.dataset.cat; ui.hidden.has(id) ? ui.hidden.delete(id) : ui.hidden.add(id); }
       else if (all) { if (all.dataset.legend === "all") availableCats().forEach((c) => ui.hidden.delete(c.id)); else availableCats().forEach((c) => ui.hidden.add(c.id)); }
       else return;
       LS.set("hidden", Array.from(ui.hidden));
@@ -405,37 +396,21 @@
   let CUR = null;
   async function renderMushaf() {
     const v = $("#v-mushaf");
-    const lesson = ui.lesson && lessonById(ui.lesson);
-    const opts = META.surahs.map((s) => `<option value="${s.n}"${s.n === ui.surah ? " selected" : ""}>${AR(s.n)} · ${esc(s.ar)}</option>`).join("");
     v.innerHTML = `
-      ${lesson ? `<div class="lesson-banner"><h3>المرحلة ${AR(LESSONS.indexOf(lesson) + 1)}: ${esc(lesson.title)}</h3><p>${esc(lesson.text)}</p>
-        <div class="row"><button class="btn primary" id="lessonDone">${(LS.get("done", [])).includes(lesson.id) ? "أنهيت هذه المرحلة ✓" : "أنهيت المرحلة"}</button><button class="btn ghost" id="lessonExit">الخروج من المرحلة</button><a class="btn ghost" href="#lessons">كل المراحل</a></div></div>` : ""}
       ${surahHead(ui.surah)}${surahTabs("show")}
-      ${CAN_EDIT && !lesson ? `<div class="lesson-banner"><h3>أدوات الشيخ</h3><p>اضغط رقم الآية ${canRecord() ? "لتسجيل تلاوتها بالكاميرا" : "لإضافة فيديو تلاوتها"}، واضغط أي كلمة لتعديل ألوانها أو تسجيل نطقها.</p></div>` : ""}
+      ${CAN_EDIT ? `<div class="lesson-banner"><h3>أدوات الشيخ</h3><p>اضغط رقم الآية ${canRecord() ? "لتسجيل تلاوتها بالكاميرا" : "لإضافة فيديو تلاوتها"}، واضغط أي كلمة لتعديل ألوانها أو تسجيل نطقها.</p></div>` : ""}
       <div class="bar">
-        <div class="field"><label for="surahSel">السورة</label><select id="surahSel">${opts}</select></div>
-        <div class="field"><label for="modeSel">القراءة</label><select id="modeSel">
-          <option value="waqf"${mode() === "waqf" ? " selected" : ""}>الوقف على رؤوس الآي</option>
-          <option value="wasl"${mode() === "wasl" ? " selected" : ""}>الوصل</option>
-          <option value="marks"${mode() === "marks" ? " selected" : ""}>الوقف عند علامات الوقف</option></select></div>
         <div class="field" aria-label="حجم الخط"><button class="iconbtn" id="fsDown" aria-label="تصغير الخط">−</button><button class="iconbtn" id="fsUp" aria-label="تكبير الخط">+</button></div>
-        ${STATIC ? `<button class="btn" id="stuRec">🎙 سجّل تلاوتك</button><button class="btn" id="pdfBtn">PDF</button>` : ""}
-        <div class="field"><label for="gotoAyah">الآية</label><input id="gotoAyah" type="number" min="1" inputmode="numeric" style="width:76px" placeholder="رقم"></div>
+        ${STATIC ? `<button class="btn" id="stuRec">🎙 سمّع تلاوتك</button><button class="btn" id="pdfBtn">🖨 السورة PDF</button><button class="btn" id="traceBtn" title="تدريب: اكتب السورة مع الضبط">✍ ورقة الكتابة</button>` : ""}
+        <span class="grow note">اضغط أي كلمة لتكبيرها وسماع نطق الشيخ.</span>
       </div>
       <div class="legend" id="legend">${legendHTML()}</div>
       <article class="page" id="page" style="--q:${ui.size}px"><div class="loading"><div class="bar-l"><i></i></div><span>تحميل السورة…</span></div></article>`;
     bindLegend($("#legend", v), () => redrawMushaf());
     bindSurahTabs(v);
-    $("#surahSel", v).onchange = (e) => { ui.surah = +e.target.value; LS.set("surah", ui.surah); renderMushaf(); };
-    $("#modeSel", v).onchange = (e) => { ui.mode = e.target.value; LS.set("mode", ui.mode); redrawMushaf(); };
     $("#fsDown", v).onclick = () => setSize(-2);
     $("#fsUp", v).onclick = () => setSize(2);
-    $("#gotoAyah", v).onchange = (e) => gotoAyah(+e.target.value);
-    if ($("#stuRec", v)) { $("#stuRec", v).onclick = () => studentRecorder(); $("#pdfBtn", v).onclick = () => printSurah(); }
-    if (lesson) {
-      $("#lessonDone", v).onclick = () => { const d = new Set(LS.get("done", [])); d.add(lesson.id); LS.set("done", Array.from(d)); toast("أحسنت! سُجّلت المرحلة منتهية."); renderMushaf(); };
-      $("#lessonExit", v).onclick = () => { ui.lesson = null; LS.set("lesson", null); renderMushaf(); };
-    }
+    if ($("#stuRec", v)) { $("#stuRec", v).onclick = () => studentRecorder(); $("#pdfBtn", v).onclick = () => printSurah(); $("#traceBtn", v).onclick = () => printSurah(true); }
     try { CUR = await loadSurah(ui.surah); } catch (e) { $("#page").innerHTML = `<p class="empty">تعذّر تحميل السورة. تحقّق من الاتصال ثم أعد المحاولة.</p>`; return; }
     ui.rendered = 0;
     drawPage();
@@ -466,26 +441,31 @@
         if (canShare) $("#srShare", bar).onclick = () => navigator.share({ files: [file], title: name, text: `تلاوتي لسورة ${META.surahs[ui.surah - 1].ar}` }).catch(() => {});
       };
       rec.start(1000); t0 = Date.now();
-      bar.innerHTML = `<button class="btn danger" id="srStop">■ إيقاف</button><span class="rec-timer" id="srT">٠:٠٠</span><span class="grow">جارٍ التسجيل… اقرأ الآن.</span>`;
+      bar.innerHTML = `<button class="btn danger" id="srStop">■ إيقاف</button><span class="rec-timer" id="srT">0:00</span><span class="grow">جارٍ التسجيل… اقرأ الآن.</span>`;
       $("#srStop", bar).onclick = () => rec.stop();
       timer = setInterval(() => { const sec = (Date.now() - t0) / 1000; $("#srT", bar).textContent = mmss(sec); }, 500);
     }
     idle();
   }
-  function printSurah() {
+  /** The surah as a framed page; with `trace`, the cheikh's first drill: the text in faint outline to write over with its dabt. */
+  function printSurah(trace) {
     if (!CUR) return;
     if (ui.rendered < CUR.ayahs.length) appendAyahs(CUR.ayahs.length - ui.rendered);
+    document.body.classList.toggle("trace", !!trace);
     toast("اختر «حفظ بصيغة PDF» في نافذة الطباعة.", 5000);
-    setTimeout(() => window.print(), 400);
+    setTimeout(() => { window.print(); document.body.classList.remove("trace"); }, 400);
   }
   function setSize(d) { ui.size = Math.max(20, Math.min(72, ui.size + d)); LS.set("size", ui.size); const p = $("#page"); if (p) p.style.setProperty("--q", ui.size + "px"); }
   function drawPage() {
     const S = CUR, s = META.surahs[S.n - 1];
     const page = $("#page");
     const showBasmala = S.n !== 9;
-    page.innerHTML = `<div class="cartouche"><h2>سورة ${esc(s.ar)}</h2><span>${AR(s.count)} آية · الجزء ${AR(s.juz)} · الصفحة ${AR(s.page)}</span></div>
+    const key = CORE.map((id) => CATMAP.get(id)).filter(Boolean).map((c) => `<span style="--c:var(--c-${c.id})"><i></i>${esc(c.name)}</span>`).join("");
+    page.innerHTML = `<div class="print-only print-head"><b>الطريق إلى الإتقان</b><span class="trace-only">تدريب: اكتب السورة مع الضبط</span><span>رواية قالون عن نافع · الشيخ المقرئ محمّد بن عبد الله جوّاد</span></div>
+      <div class="cartouche"><h2>سورة ${esc(s.ar)}</h2><span>${AR(s.count)} آية · الجزء ${AR(s.juz)} · الصفحة ${AR(s.page)}</span></div>
       ${showBasmala ? `<div class="basmala">${basmalaHTML()}</div>` : ""}
-      <div class="mushaf" id="mushaf"></div><div class="more" id="more"></div>`;
+      <div class="mushaf" id="mushaf"></div><div class="more" id="more"></div>
+      <div class="print-only print-key">${key}</div>`;
     ui.rendered = 0;
     appendAyahs(40);
   }
@@ -608,7 +588,7 @@
         <div class="section"><h4>نطق الشيخ</h4>
           ${media ? `<div class="video-box"><video id="wv" playsinline preload="metadata"></video>
             <div class="bar"><button class="btn primary" id="wPlay">▶ تشغيل</button><button class="btn" id="wLoop" aria-pressed="false">تكرار تلقائي</button>
-            <div class="seg" id="wRate"><button data-r="0.5">٠٫٥×</button><button data-r="0.75">٠٫٧٥×</button><button data-r="1" aria-pressed="true">١×</button></div>
+            <div class="seg" id="wRate"><button data-r="0.5">0.5×</button><button data-r="0.75">0.75×</button><button data-r="1" aria-pressed="true">1×</button></div>
             <button class="btn" id="wStage">⛶ شاشة كاملة</button></div></div>`
             : `<div class="empty">لم يسجّل الشيخ نطق هذه الكلمة بعد. <button class="linkbtn" id="wStage">اعرض الكلمة بحجم كبير</button></div>`}
           ${note ? `<div class="note">${esc(note)}</div>` : ""}
@@ -907,7 +887,7 @@
       setUI("saving");
       msg.textContent = "جارٍ حفظ الفيديو… لا تغلق الصفحة.";
       try {
-        const url = await storeVideo(blob, o.key, (f) => (msg.textContent = `جارٍ رفع الفيديو… ${AR(Math.round(f * 100))}٪`));
+        const url = await storeVideo(blob, o.key, (f) => (msg.textContent = `جارٍ رفع الفيديو… ${AR(Math.round(f * 100))}%`));
         STATE.videos[o.key] = url;
         if (o.ayahKey) delete STATE.timings[o.key];
         await persist();
@@ -981,6 +961,7 @@
       while (b.length % 4) b += "=";
       const j = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b), (c) => c.charCodeAt(0))));
       if (j.r && j.t) GH.set({ repo: j.r, token: j.t, branch: j.b || "main" });
+      if (j.sk) LS.set("sk", j.sk);
       if (j.ia) LS.set("ia", j.ia);
       LS.set("welcome", 1);
     } catch (e) { /* malformed link */ }
@@ -1002,7 +983,8 @@
     $("#mkLink", body).onclick = () => {
       const iaNew = { a: $("#iaA", body).value.trim(), s: $("#iaS", body).value.trim(), p: $("#iaP", body).value.trim() || prefix };
       if (iaNew.a && iaNew.s) LS.set("ia", iaNew);
-      const payload = { r: g.repo, t: g.token, b: g.branch };
+      const payload = g ? { r: g.repo, t: g.token, b: g.branch } : {};
+      if (SK()) payload.sk = SK();
       if (iaNew.a && iaNew.s) payload.ia = iaNew;
       const link = location.origin + location.pathname + "#k=" + b64url(JSON.stringify(payload));
       const msgTxt = "السلام عليكم شيخنا، هذا رابط أدوات الشيخ في موقع «الطريق إلى الإتقان». افتحه مرة واحدة على هاتفك:\n" + link;
@@ -1092,7 +1074,7 @@
   async function uploadVideo(file, key) {
     const assets = await cap("assets");
     if (!assets) { toast("رفع الفيديو متاح لمن يملك صلاحية التعديل على هذه الصفحة."); return false; }
-    if (file.size > 20 * 1024 * 1024) { toast("حجم الفيديو أكبر من ٢٠ ميغابايت. قصّر المقطع أو صغّر جودته ثم أعد المحاولة.", 6000); return false; }
+    if (file.size > 20 * 1024 * 1024) { toast("حجم الفيديو أكبر من 20 ميغابايت. قصّر المقطع أو صغّر جودته ثم أعد المحاولة.", 6000); return false; }
     toast("جارٍ رفع الفيديو…", 60000);
     try {
       const type = file.type && file.type.startsWith("video/") ? undefined : { contentType: "video/mp4" };
@@ -1158,25 +1140,8 @@
     if (SHEET) drawSheet();
   }
 
-  /* ---------------- lessons ---------------- */
-  function renderLessons() {
-    const done = new Set(LS.get("done", []));
-    $("#v-lessons").innerHTML = `<h2 class="page-title">مراحل الدرس</h2>
-      <p class="lead">تُضاف الألوان مرحلة بعد مرحلة كما في دورة «الطريق إلى الإتقان»: ابدأ بالساكن الشديد، ثم أضف لوناً جديداً في كل مرحلة حتى تجتمع الألوان كلها.</p>
-      <div class="grid">${LESSONS.map((l, i) => `<button class="card${done.has(l.id) ? " done" : ""}" data-lesson="${l.id}" style="text-align:start">
-        <span class="num">المرحلة ${AR(i + 1)}${done.has(l.id) ? " · أُنجز ✓" : ""}</span><h3>${esc(l.title)}</h3><p>${esc(l.sub)} · ${esc(l.practice ? "تمرين" : "سورة " + META.surahs[l.s - 1].ar)}</p>
-        <span class="chips">${l.cats.filter((c) => CATMAP.has(c)).map((c) => `<span class="chip small" style="--dot:var(--c-${c})"><span class="dot"></span>${esc(CATMAP.get(c).name)}</span>`).join("")}</span></button>`).join("")}</div>`;
-    $$("[data-lesson]").forEach((b) => (b.onclick = () => {
-      const l = lessonById(b.dataset.lesson);
-      if (l.practice) { P.surah = l.s; P.ai = defAi(l.s); P.mode = "exercise"; resetExercise(); location.hash = "#practice"; return; }
-      ui.lesson = l.id; LS.set("lesson", l.id); ui.surah = l.s; LS.set("surah", l.s);
-      l.cats.forEach((c) => ui.hidden.delete(c)); LS.set("hidden", Array.from(ui.hidden));
-      location.hash = "#mushaf"; if (location.hash === "#mushaf") route();
-    }));
-  }
-
   /* ---------------- practice: tables and the colouring drill ---------------- */
-  function resetExercise() { P.picked = null; P.placed = {}; P.checked = false; P.paint = {}; P.solved = false; P.wasl = {}; P.wPick = null; P.locked = false; P.fresh = false; }
+  function resetExercise() { P.picked = null; P.placed = {}; P.checked = false; P.paint = {}; P.solved = false; P.wasl = {}; P.wPick = null; P.locked = false; P.fresh = false; P.ans = {}; }
   const KINDS = [["time", "أزمنة الحروف"], ["nun", "النون الساكنة والتنوين والميم"], ["paint", "التلوين"]];
   const kindSeg = () => `<div class="seg" id="pKind" style="margin-bottom:10px;flex-wrap:wrap">${KINDS.map(([k, l]) => `<button data-k="${k}" aria-pressed="${(P.kind || "time") === k}">${l}</button>`).join("")}</div>`;
   function bindKindSeg(v) { $$("#pKind button", v).forEach((b) => (b.onclick = () => { P.kind = b.dataset.k; resetExercise(); renderPractice(); })); }
@@ -1190,13 +1155,15 @@
   }
   const ayahOpts = (S) => `<option value="-1"${P.ai < 0 ? " selected" : ""}>السورة كلها</option>` + S.ayahs.map((a, i) => `<option value="${i}"${i === P.ai ? " selected" : ""}>${AR(a.a)}</option>`).join("");
   const ovOf = (S, it) => ovFor(S.n, it.ay.a, it.wi, it.wd[0]);
-  /* ---------------- attempts, exam and follow-up ----------------
-     No server: every check is logged on the student's device; he sends the cheikh a link that carries
-     his results, and the cheikh's device keeps the reports it opened and adds up the common mistakes. */
-  const KIND_LABEL = { time: "أزمنة الحروف", nun: "الميم والنون", paint: "التلوين", wasl: "همزة الوصل" };
+  /* ---------------- attempts and exams ----------------
+     Every check is logged on the student's device, and sent to the cheikh when the student has joined a cohort. */
+  const KIND_LABEL = { time: "أزمنة الحروف", nun: "الميم والنون", paint: "التلوين", wasl: "همزة الوصل", madd: "المدود", ra: "الراءات", huruf: "المخارج والصفات" };
   function ruleLabel(kind, id) {
     if (!id) return "";
     if (kind === "wasl") return "همزة الوصل: " + waslLabel(id).replace("<br>", "، ");
+    if (kind === "madd") return (MADD_T[id] || [id])[0];
+    if (kind === "ra") return id === "tafkhim" ? "تفخيم الراء" : "ترقيق الراء";
+    if (kind === "huruf") return id === "makhraj" ? "مخارج الحروف" : "صفات الحروف";
     const n = T.NUN_RULES.find((r) => r.id === id);
     return n ? n.name : (CATMAP.get(id) || { name: id }).name;
   }
@@ -1209,11 +1176,12 @@
     const A = LS.get("attempts", []);
     A.push({ t: Date.now(), k: kind, s: S.n, a: key, r: right, n: total, x: wrong, ex: P.exam ? 1 : 0, e });
     LS.set("attempts", A.slice(-200));
+    sendAttempt(A[A.length - 1]);
     if (P.exam) P.locked = true;
   }
   const examBtn = () => `<button class="btn exam${P.exam ? " on" : ""}" id="pExam" aria-pressed="${!!P.exam}" title="في الامتحان لا يُعرض الحل، والتسليم مرة واحدة، والنتيجة تُسجَّل في «نتائجي»">📝 ${P.exam ? "أنت في امتحان" : "وضع الامتحان"}</button>`;
   function bindExam(v) { const b = $("#pExam", v); if (b) b.onclick = () => { P.exam = !P.exam; if (P.exam) P.mode = "exercise"; resetExercise(); renderPractice(); }; }
-  const examNote = () => (P.exam && P.locked ? `<div style="margin-top:6px">سُجّل الامتحان. تجده في «نتائجي» ومنه ترسله إلى الشيخ.</div>` : "");
+  const examNote = () => (P.exam && P.locked ? `<div style="margin-top:6px">سُجّل الامتحان في «نتائجي»${TOK() ? " ووصل إلى الشيخ" : ""}.</div>` : "");
   /** Mistakes added up: by rule (what was expected, or what was wrongly given) and by word. */
   function errStats(rows) { // rows: [kind, word, exp, got, count]
     const rules = new Map(), words = new Map();
@@ -1227,98 +1195,359 @@
   }
   const focusHTML = (st) => (st.rules.length ? `<div class="focus">${st.rules.map((r) => `<div><b>${esc(r.label)}</b><span>${esc(KIND_LABEL[r.kind] || "")}</span><i>${AR(r.c)} خطأ</i></div>`).join("")}</div>
     ${st.words.length ? `<p class="fwords">أكثر الكلمات خطأً: ${st.words.map(([w, c]) => `<span class="chip small">${esc(w)} · ${AR(c)}</span>`).join(" ")}</p>` : ""}` : `<p class="empty">لا أخطاء مسجّلة بعد.</p>`);
-  const attemptRow = (a) => `<tr><td>${new Date(a.t).toLocaleDateString("ar")}</td><td>${esc((META.surahs[a.s - 1] || {}).ar || "")}${a.a === "all" ? "" : " · " + AR(a.a)}</td><td>${esc(KIND_LABEL[a.k] || a.k)}${a.ex ? ` <span class="badge">امتحان</span>` : ""}</td><td><b>${AR(a.r)} / ${AR(a.n)}</b>${a.x ? ` <small>(${AR(a.x)} خطأ)</small>` : ""}</td><td>${a.n ? AR(Math.round((a.r / a.n) * 100)) + "٪" : "—"}</td></tr>`;
+  const attemptRow = (a) => `<tr><td>${new Date(a.t).toLocaleDateString("ar-u-nu-latn")}</td><td>${esc((META.surahs[a.s - 1] || {}).ar || "")}${a.a === "all" ? "" : " · " + AR(a.a)}</td><td>${esc(KIND_LABEL[a.k] || a.k)}${a.ex ? ` <span class="badge">امتحان</span>` : ""}</td><td><b>${AR(a.r)} / ${AR(a.n)}</b>${a.x ? ` <small>(${AR(a.x)} خطأ)</small>` : ""}</td><td>${a.n ? AR(Math.round((a.r / a.n) * 100)) + "%" : "—"}</td></tr>`;
   const attemptsTable = (A) => `<div class="ptable-wrap"><table class="atable"><thead><tr><th>التاريخ</th><th>السورة</th><th>التمرين</th><th>الصحيح</th><th>النسبة</th></tr></thead><tbody>${A.slice().reverse().map(attemptRow).join("")}</tbody></table></div>`;
   const rowsOf = (A) => A.flatMap((a) => (a.e || []).map((e) => [a.k, e[0], e[1], e[2], e[3] || 1]));
-  const bytesB64 = (u8) => { let s = ""; for (const b of u8) s += String.fromCharCode(b); return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); };
-  const b64Bytes = (b) => { b = b.replace(/-/g, "+").replace(/_/g, "/"); while (b.length % 4) b += "="; return Uint8Array.from(atob(b), (c) => c.charCodeAt(0)); };
-  async function pipe(u8, T2) { return new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(new T2("deflate-raw"))).arrayBuffer()); }
-  async function reportLink() {
-    const A = LS.get("attempts", []), st = LS.get("student", {});
-    if (!st.id) { st.id = Math.random().toString(36).slice(2, 10); LS.set("student", st); }
-    const agg = new Map();
-    for (const [k, w, exp, got, c] of rowsOf(A)) { const key = [k, w, exp, got].join("|"); agg.set(key, (agg.get(key) || 0) + c); }
-    const E = [...agg].sort((a, b) => b[1] - a[1]).slice(0, 45).map(([k, c]) => k.split("|").concat(c));
-    const rep = { v: 1, id: st.id, n: st.name || "", t: Date.now(), A: A.slice(-40).map((a) => [a.t, a.k, a.s, a.a, a.r, a.n, a.x, a.ex]), E };
-    const raw = new TextEncoder().encode(JSON.stringify(rep));
-    let data = "0" + bytesB64(raw);
-    try { if (window.CompressionStream) data = "1" + bytesB64(await pipe(raw, CompressionStream)); } catch (e) { /* keep plain */ }
-    return location.origin + location.pathname + "#r=" + data;
+  /* ---------------- the school (Supabase) ----------------
+     The page talks to the database only through the itqan_* functions: a student is known by the token he got
+     when he joined his cohort, the cheikh by his key. Without a connection everything still works on the device. */
+  const DB = {
+    ok: () => !!(SITE.supabase && SITE.supabase.url && SITE.supabase.key),
+    async rpc(fn, args) {
+      const r = await fetch(`${SITE.supabase.url}/rest/v1/rpc/${fn}`, { method: "POST", headers: { apikey: SITE.supabase.key, "Content-Type": "application/json" }, body: JSON.stringify(args || {}) });
+      const t = await r.text(); let j = null;
+      try { j = t ? JSON.parse(t) : null; } catch (e) { /* not json */ }
+      if (!r.ok) { const e = new Error((j && j.message) || "HTTP " + r.status); e.status = r.status; e.msg = j && j.message; throw e; }
+      return j;
+    },
+  };
+  const SK = () => LS.get("sk", "");
+  const TOK = () => LS.get("stok", "");
+  let ME = LS.get("me", null), TD = null;
+  const pct = (a, b) => (b ? Math.round((100 * a) / b) : null);
+  const pctTxt = (x) => (x == null ? "—" : AR(x) + "%");
+  const fmtDate = (d) => (d ? new Date(d).toLocaleDateString("ar-u-nu-latn", { day: "numeric", month: "short", year: "numeric" }) : "");
+  const sName = (n) => (META.surahs[n - 1] || {}).ar || "";
+  async function refreshMe() {
+    if (!TOK() || !DB.ok()) return ME;
+    try { ME = await DB.rpc("itqan_me", { p_token: TOK() }); LS.set("me", ME); await flushOutbox(); }
+    catch (e) { if (e.msg === "bad_token") { LS.del("stok"); LS.del("me"); ME = null; } }
+    return ME;
   }
-  async function importReport() {
-    const h = location.hash.slice(3);
-    try {
-      let u8 = b64Bytes(h.slice(1));
-      if (h[0] === "1") u8 = await pipe(u8, DecompressionStream);
-      const j = JSON.parse(new TextDecoder().decode(u8));
-      if (!j || !j.id || !Array.isArray(j.A)) throw new Error("bad");
-      const R = LS.get("reports", {});
-      R[j.id] = { id: j.id, n: String(j.n || "طالب").slice(0, 60), t: j.t, A: j.A.map((a) => ({ t: a[0], k: a[1], s: a[2], a: a[3], r: a[4], n: a[5], x: a[6], ex: a[7] })), E: (j.E || []).map((e) => [e[0], e[1], e[2], e[3], +e[4] || 1]) };
-      LS.set("reports", R);
-      ui.student = j.id;
-      toast("وصلت نتائج " + R[j.id].n + " وحُفظت على هذا الجهاز.");
-    } catch (e) { toast("رابط النتائج غير صالح أو ناقص."); }
-    history.replaceState(null, "", location.pathname + location.search + "#students");
-    route();
+  /** Drill results go to the cheikh; when the network fails they wait on the device and leave with the next call. */
+  async function sendAttempt(a) {
+    if (!TOK() || !DB.ok()) return;
+    const box = LS.get("outbox", []); box.push(a); LS.set("outbox", box.slice(-100));
+    await flushOutbox();
   }
-  function renderProgress() {
-    const v = $("#v-progress"), A = LS.get("attempts", []), st = LS.get("student", {});
-    const exams = A.filter((a) => a.ex), tot = A.reduce((s, a) => s + a.n, 0), ok = A.reduce((s, a) => s + a.r, 0);
-    v.innerHTML = `<h2 class="page-title">نتائجي</h2>
-      <p class="lead">كل مرة تضغط «تحقّق» في تمرين تُسجَّل محاولتك هنا على جهازك. أرسل نتائجك إلى الشيخ برابط واحد ليرى محاولاتك وامتحاناتك وما تحتاج التركيز عليه.</p>
-      <div class="bar"><div class="field"><label for="stName">اسمك</label><input type="text" id="stName" value="${esc(st.name || "")}" placeholder="الاسم واللقب"></div>
-        <button class="btn primary" id="stSend"${A.length ? "" : " disabled"}>📤 أرسل نتائجي إلى الشيخ</button><button class="btn" id="stCopy"${A.length ? "" : " disabled"}>انسخ الرابط</button></div>
-      <div class="stats"><div><b>${AR(A.length)}</b><span>محاولة</span></div><div><b>${AR(exams.length)}</b><span>امتحان</span></div><div><b>${tot ? AR(Math.round((ok / tot) * 100)) + "٪" : "—"}</b><span>نسبة الصواب</span></div></div>
-      <h3 class="sec">ما تحتاج التركيز عليه</h3>${focusHTML(errStats(rowsOf(A)))}
-      <h3 class="sec">محاولاتي</h3>${A.length ? attemptsTable(A) : `<p class="empty">لم تُجرِ أي تمرين بعد. افتح سورة ثم اختر تمريناً، وللامتحان اضغط «وضع الامتحان».</p>`}
-      ${A.length ? `<p><button class="linkbtn" id="stClear">امسح سجلّي من هذا الجهاز</button></p>` : ""}`;
-    $("#stName", v).onchange = (e) => { const s = LS.get("student", {}); s.name = e.target.value.trim(); LS.set("student", s); };
-    const need = () => { if (!(LS.get("student", {}).name || "").trim()) { toast("اكتب اسمك أولاً ليعرفك الشيخ."); $("#stName", v).focus(); return false; } return true; };
-    $("#stSend", v).onclick = async () => {
-      if (!need()) return;
-      const url = await reportLink(), text = `نتائجي في «الطريق إلى الإتقان» — ${LS.get("student", {}).name}`;
-      if (navigator.share) { try { await navigator.share({ title: text, text, url }); return; } catch (e) { if (e && e.name === "AbortError") return; } }
-      try { await navigator.clipboard.writeText(url); toast("نُسخ الرابط. ألصقه في رسالة إلى الشيخ."); } catch (e) { prompt("انسخ الرابط وأرسله إلى الشيخ:", url); }
+  async function flushOutbox() {
+    let box = LS.get("outbox", []);
+    while (box.length && TOK()) {
+      const a = box[0];
+      try { await DB.rpc("itqan_attempt", { p_token: TOK(), p_surah: a.s, p_kind: a.k, p_scope: String(a.a), p_right: a.r, p_total: a.n, p_wrong: a.x, p_exam: !!a.ex, p_errors: a.e || [] }); }
+      catch (e) { if (e.status && e.status < 500 && e.msg !== "bad_token") { box.shift(); LS.set("outbox", box); continue; } return; }
+      box.shift(); LS.set("outbox", box);
+    }
+  }
+  async function joinCohort(code, name) {
+    const j = await DB.rpc("itqan_join", { p_code: code, p_name: name });
+    LS.set("stok", j.token); delete j.token; ME = j; LS.set("me", ME); LS.del("joinCode");
+    return ME;
+  }
+  /** Links: #j=CODE opens the join form with the cohort code, #s=TOKEN signs a student in on another device. */
+  function readSchoolLink() {
+    const h = location.hash || "";
+    if (h.startsWith("#j=")) { LS.set("joinCode", decodeURIComponent(h.slice(3)).toUpperCase()); history.replaceState(null, "", location.pathname + "#home"); }
+    if (h.startsWith("#s=")) { LS.set("stok", decodeURIComponent(h.slice(3))); LS.del("me"); ME = null; history.replaceState(null, "", location.pathname + "#home"); }
+  }
+  const siteUrl = () => location.origin + location.pathname;
+  async function shareText(title, url) {
+    if (navigator.share) { try { await navigator.share({ title, text: title, url }); return; } catch (e) { if (e && e.name === "AbortError") return; } }
+    try { await navigator.clipboard.writeText(url); toast("نُسخ الرابط."); } catch (e) { prompt("انسخ الرابط:", url); }
+  }
+  function joinCardHTML() {
+    if (!DB.ok()) return "";
+    return `<div class="card join"><h3 class="sec" style="margin-top:0">انضمّ إلى دفعتك</h3>
+      <p>اكتب الرمز الذي أعطاك إياه الشيخ واسمك، فتظهر لك سور مستواك وتصل نتائجك إلى الشيخ وحدها.</p>
+      <div class="bar"><div class="field"><label for="jCode">رمز الدفعة</label><input id="jCode" dir="ltr" maxlength="8" autocomplete="off" style="width:110px;text-transform:uppercase" value="${esc(LS.get("joinCode", ""))}"></div>
+        <div class="field grow"><label for="jName">الاسم واللقب</label><input id="jName" autocomplete="name"></div>
+        <button class="btn primary" id="jGo">انضمّ</button></div></div>`;
+  }
+  function bindJoin(root) {
+    const go = $("#jGo", root); if (!go) return;
+    go.onclick = async () => {
+      const code = $("#jCode", root).value.trim(), name = $("#jName", root).value.trim();
+      if (!code || name.length < 2) { toast("اكتب رمز الدفعة واسمك."); return; }
+      go.disabled = true;
+      try { await joinCohort(code, name); toast(`أهلاً بك يا ${name}. انضممت إلى ${ME.cohort ? ME.cohort.name : "الدفعة"}.`); renderHome(); }
+      catch (e) { toast(e.msg === "bad_code" ? "الرمز غير صحيح. تأكّد منه عند الشيخ." : "تعذّر الاتصال. أعد المحاولة."); go.disabled = false; }
     };
-    $("#stCopy", v).onclick = async () => { if (!need()) return; const url = await reportLink(); try { await navigator.clipboard.writeText(url); toast("نُسخ الرابط. ألصقه في رسالة إلى الشيخ."); } catch (e) { prompt("انسخ الرابط:", url); } };
-    const cl = $("#stClear", v); if (cl) cl.onclick = () => { if (cl.dataset.sure) { LS.del("attempts"); renderProgress(); } else { cl.dataset.sure = 1; cl.textContent = "اضغط مرة أخرى للتأكيد: سيُمسح السجلّ كله"; } };
   }
-  function renderStudents() {
-    const v = $("#v-students"), R = LS.get("reports", {}), list = Object.values(R).sort((a, b) => b.t - a.t);
-    $("#studentsLink").hidden = !list.length && !CAN_EDIT;
-    if (!list.length) { v.innerHTML = `<h2 class="page-title">متابعة الطلاب</h2><p class="lead">لم تصلك نتائج بعد. يفتح الطالب صفحة «نتائجي» ويضغط «أرسل نتائجي إلى الشيخ»، فيصلك رابط في تيليغرام أو واتساب. افتح الرابط على هذا الجهاز فتُحفظ نتائجه هنا.</p>`; return; }
-    // common mistakes: a rule counts once per student who erred in it
-    const who = new Map(), cnt = new Map(), wordWho = new Map();
-    for (const r of list) {
-      const seen = new Set(), seenW = new Set();
-      for (const [kind, w, exp, got, c] of r.E) {
-        const rk = kind + "|" + (exp || got); cnt.set(rk, (cnt.get(rk) || 0) + c);
-        if (!seen.has(rk)) { seen.add(rk); who.set(rk, (who.get(rk) || 0) + 1); }
-        const pw = plain(w); if (!seenW.has(pw)) { seenW.add(pw); wordWho.set(pw, (wordWho.get(pw) || 0) + 1); }
+
+  /* ---------------- the cheikh's follow-up: cohorts, attendance, evaluation, reports ---------------- */
+  // the academy's programs (the cheikh's list); a level belongs to one of them
+  const PROGRAMS = ["التجويد العملي", "التجويد النظري", "أصول الرواية", "علوم القرآن", "الرسم والضبط", "القراءات: الإفراد", "القراءات: الجمع الصغرى", "القراءات: الجمع الكبرى", "التفسير", "التزكية"];
+  const EVAL = [["makharij", "مخارج الحروف"], ["sifat", "أزمنة الحروف وصفاتها"], ["harakat", "إتمام الحركات"], ["takhlis", "تخليص الحروف"],
+    ["ghunna", "الغنّة وأحكام النون والميم"], ["waqf", "الوقف والابتداء وهمزة الوصل"], ["fluency", "الطلاقة والحفظ"]];
+  const STATUS = [["present", "حاضر", "✓"], ["late", "متأخّر", "◔"], ["absent", "غائب", "✗"], ["excused", "بعذر", "–"]];
+  const SV = { tab: "overview", cohort: null, student: null, session: null };
+  async function loadTD() { TD = await DB.rpc("itqan_t_data", { p_key: SK() }); return TD; }
+  async function tsave(kind, row) { const r = await DB.rpc("itqan_t_save", { p_key: SK(), p_kind: kind, p_row: row }); await loadTD(); return r; }
+  async function tdel(kind, id) { await DB.rpc("itqan_t_delete", { p_key: SK(), p_kind: kind, p_id: id }); await loadTD(); }
+  const levelOf = (c) => TD.levels.find((l) => l.id === (c && c.level_id)) || null;
+  const studentsOf = (cid) => TD.students.filter((s) => s.cohort_id === cid);
+  /** Everything known about one student, reduced to the numbers the cheikh reads. */
+  function studentStats(s) {
+    const c = TD.cohorts.find((x) => x.id === s.cohort_id), lvl = levelOf(c);
+    const sess = TD.sessions.filter((x) => x.cohort_id === s.cohort_id);
+    const att = new Map(TD.attendance.filter((a) => a[1] === s.id).map((a) => [a[0], a[2]]));
+    let got = 0, cnt = 0;
+    for (const se of sess) { const st = att.get(se.id); if (!st || st === "excused") continue; cnt++; got += st === "present" ? 1 : st === "late" ? 0.75 : 0; }
+    const attRate = cnt ? Math.round((100 * got) / cnt) : null;
+    const prog = TD.progress.filter((p) => p[0] === s.id);
+    const best = new Map(); for (const p of prog) best.set(p[1] + "|" + p[2], p[4]);
+    const surahs = lvl ? lvl.surahs : [...new Set(prog.map((p) => p[1]))];
+    const cells = [];
+    const LD = lvlDrills(lvl);
+    for (const n of surahs) for (const k of LD) cells.push(best.has(n + "|" + k) ? +best.get(n + "|" + k) : 0);
+    const drills = cells.length && prog.length ? Math.round(cells.reduce((a, b) => a + b, 0) / cells.length) : null;
+    const evs = TD.evaluations.filter((e) => e.student_id === s.id), crit = {};
+    for (const [k] of EVAL) { const xs = evs.map((e) => e.scores && e.scores[k]).filter((x) => x != null && x !== ""); crit[k] = xs.length ? xs.reduce((a, b) => a + +b, 0) / xs.length : null; }
+    const cv = Object.values(crit).filter((x) => x != null), evalPct = cv.length ? Math.round((10 * cv.reduce((a, b) => a + b, 0)) / cv.length) : null;
+    const parts = [[evalPct, 0.5], [drills, 0.3], [attRate, 0.2]].filter((x) => x[0] != null), w = parts.reduce((a, x) => a + x[1], 0);
+    const overall = parts.length ? Math.round(parts.reduce((a, x) => a + x[0] * x[1], 0) / w) : null;
+    const errs = TD.errors.filter((e) => e[0] === s.id).map((e) => [e[1], e[3], e[2], "", +e[4] || 1]);
+    return { c, lvl, LD, sess, att, attRate, cnt, best, surahs, drills, evs, crit, evalPct, overall, errs, prog };
+  }
+  const scoreCls = (x) => (x == null ? "" : x >= 80 ? "good" : x >= 50 ? "mid" : "low");
+  const cell = (x) => `<td class="sc ${scoreCls(x)}">${pctTxt(x)}</td>`;
+  async function renderStudents() {
+    const v = $("#v-students");
+    if (!DB.ok()) { v.innerHTML = `<h2 class="page-title">الطلاب</h2><p class="empty">لم تُربط قاعدة البيانات بعد.</p>`; return; }
+    if (!SK()) {
+      v.innerHTML = `<h2 class="page-title">دخول الشيخ</h2><p class="lead">افتح «رابط الشيخ» الذي وصلك مرة واحدة على هذا الجهاز، أو الصق مفتاح الشيخ هنا.</p>
+        <div class="bar"><div class="field grow"><label for="skIn">مفتاح الشيخ</label><input id="skIn" dir="ltr" autocomplete="off"></div><button class="btn primary" id="skGo">دخول</button></div>`;
+      $("#skGo", v).onclick = async () => { LS.set("sk", $("#skIn", v).value.trim()); try { await loadTD(); route(); } catch (e) { LS.del("sk"); toast("المفتاح غير صحيح."); } };
+      return;
+    }
+    if (!TD) {
+      v.innerHTML = `<div class="loading"><div class="bar-l"><i></i></div><span>تحميل بيانات الطلاب…</span></div>`;
+      try { await loadTD(); } catch (e) {
+        if (e.msg === "bad_key") { LS.del("sk"); return renderStudents(); }
+        v.innerHTML = `<p class="empty">تعذّر الاتصال بقاعدة البيانات. تحقّق من الإنترنت ثم أعد المحاولة.</p>`; return;
+      }
+    }
+    if (!SV.cohort || !TD.cohorts.some((c) => c.id === SV.cohort)) SV.cohort = (TD.cohorts[0] || {}).id || null;
+    const tabs = [["overview", "نظرة عامة"], ["cohort", "الدفعة والطلاب"], ["sessions", "الحصص والحضور"], ["eval", "التقييم"], ["levels", "المستويات"]];
+    const copts = TD.cohorts.map((c) => `<option value="${c.id}"${c.id === SV.cohort ? " selected" : ""}>${esc(c.name)}${levelOf(c) ? " · " + esc(levelOf(c).name) : ""}</option>`).join("");
+    v.innerHTML = `<div class="shead"><h2 class="page-title" style="margin:0">متابعة الطلاب</h2>
+        ${TD.cohorts.length ? `<div class="field"><label for="svC">الدفعة</label><select id="svC">${copts}</select></div>` : ""}
+        <button class="btn ghost" id="svNewC">+ دفعة جديدة</button></div>
+      <div class="admin-tabs">${tabs.map(([k, l]) => `<button data-sv="${k}" aria-pressed="${SV.tab === k}">${l}</button>`).join("")}</div>
+      <div id="svBody"></div>`;
+    $$("[data-sv]", v).forEach((b) => (b.onclick = () => { SV.tab = b.dataset.sv; SV.student = null; renderStudents(); }));
+    if ($("#svC", v)) $("#svC", v).onchange = (e) => { SV.cohort = e.target.value; SV.student = null; SV.session = null; renderStudents(); };
+    $("#svNewC", v).onclick = async () => { const c = await tsave("cohort", { name: "دفعة جديدة", level_id: (TD.levels[0] || {}).id || "" }); SV.cohort = c.id; SV.tab = "cohort"; renderStudents(); };
+    const body = $("#svBody", v);
+    if (SV.student) return studentReport(body, TD.students.find((s) => s.id === SV.student));
+    ({ overview: svOverview, cohort: svCohort, sessions: svSessions, eval: svEval, levels: svLevels })[SV.tab](body);
+  }
+  const curCohort = () => TD.cohorts.find((c) => c.id === SV.cohort) || null;
+  function svOverview(body) {
+    const c = curCohort();
+    if (!c) { body.innerHTML = `<p class="empty">أنشئ أول دفعة بزر «+ دفعة جديدة».</p>`; return; }
+    const lvl = levelOf(c), studs = studentsOf(c.id).filter((s) => s.active), stats = studs.map((s) => [s, studentStats(s)]);
+    const avg = (f) => { const xs = stats.map(([, st]) => f(st)).filter((x) => x != null); return xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : null; };
+    const week = Date.now() - 7 * 864e5, active = studs.filter((s) => s.last_seen && new Date(s.last_seen) > week).length;
+    // common mistakes: how many students erred in each rule
+    const who = new Map(), cnt = new Map(), words = new Map();
+    for (const [s] of stats) {
+      const seen = new Set();
+      for (const e of TD.errors.filter((x) => x[0] === s.id)) {
+        const k = e[1] + "|" + e[2]; cnt.set(k, (cnt.get(k) || 0) + (+e[4] || 1));
+        if (!seen.has(k)) { seen.add(k); who.set(k, (who.get(k) || 0) + 1); }
+        const w = plain(e[3] || ""); if (w) words.set(w, (words.get(w) || 0) + (+e[4] || 1));
       }
     }
     const common = [...who].sort((a, b) => b[1] - a[1] || cnt.get(b[0]) - cnt.get(a[0])).slice(0, 8);
-    const cwords = [...wordWho].sort((a, b) => b[1] - a[1]).slice(0, 12);
-    const card = (r) => {
-      const tot = r.A.reduce((s, a) => s + a.n, 0), ok = r.A.reduce((s, a) => s + a.r, 0), exams = r.A.filter((a) => a.ex);
-      return `<details class="stud"${ui.student === r.id || list.length === 1 ? " open" : ""}><summary><b>${esc(r.n)}</b><span>${AR(r.A.length)} محاولة · ${AR(exams.length)} امتحان · ${tot ? AR(Math.round((ok / tot) * 100)) + "٪" : "—"} · آخر إرسال ${new Date(r.t).toLocaleDateString("ar")}</span></summary>
-        <h4>ما يحتاج التركيز عليه</h4>${focusHTML(errStats(r.E))}
-        ${exams.length ? `<h4>امتحاناته</h4>${attemptsTable(exams)}` : ""}
-        <h4>كل محاولاته</h4>${attemptsTable(r.A)}
-        <p><button class="linkbtn" data-del="${esc(r.id)}">احذف نتائج هذا الطالب من جهازي</button></p></details>`;
+    const crit = EVAL.map(([k, l]) => { const xs = stats.map(([, st]) => st.crit[k]).filter((x) => x != null); return [l, xs.length ? Math.round((10 * xs.reduce((a, b) => a + b, 0)) / xs.length) : null]; });
+    const surahs = lvl ? lvl.surahs : [];
+    body.innerHTML = `<div class="report" id="rep">
+      <div class="rep-head"><h3>${esc(c.name)}${lvl ? " · " + esc(lvl.name) : ""}</h3><span>${fmtDate(new Date())}</span></div>
+      <div class="stats s5"><div><b>${AR(studs.length)}</b><span>عدد الطلاب</span></div><div><b>${AR(active)}</b><span>نشط هذا الأسبوع</span></div>
+        <div><b>${pctTxt(avg((st) => st.attRate))}</b><span>الحضور</span></div><div><b>${pctTxt(avg((st) => st.drills))}</b><span>التمارين</span></div><div><b>${pctTxt(avg((st) => st.overall))}</b><span>التقييم الشامل</span></div></div>
+      <h3 class="sec">ما يجب التركيز عليه في الدرس</h3>
+      ${common.length ? `<div class="focus">${common.map(([k, n]) => { const [kind, id] = k.split("|"); return `<div><b>${esc(ruleLabel(kind, id))}</b><span>${esc(KIND_LABEL[kind] || "")}</span><i>${AR(n)} من ${AR(studs.length)} طلاب · ${AR(cnt.get(k))} خطأ</i></div>`; }).join("")}</div>
+        <p class="fwords">أكثر الكلمات خطأً: ${[...words].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([w, n]) => `<span class="chip small">${esc(w)} · ${AR(n)}</span>`).join(" ")}</p>` : `<p class="empty">لا أخطاء مسجّلة بعد: تظهر هنا حين يتمرّن الطلاب.</p>`}
+      ${crit.some((x) => x[1] != null) ? `<h3 class="sec">معدّل تقييم الشيخ لكل معيار</h3><div class="bars">${crit.map(([l, x]) => `<div><span>${esc(l)}</span><i style="--w:${x || 0}%" class="${scoreCls(x)}"></i><b>${pctTxt(x)}</b></div>`).join("")}</div>` : ""}
+      <h3 class="sec">تقدّم الطلاب في سور المستوى</h3>
+      ${studs.length ? `<div class="ptable-wrap"><table class="atable matrix"><thead><tr><th>الطالب</th>${surahs.map((n) => `<th>${esc(sName(n))}</th>`).join("")}<th>الحضور</th><th>التقييم</th><th>الشامل</th></tr></thead><tbody>
+        ${stats.sort((a, b) => (b[1].overall || 0) - (a[1].overall || 0)).map(([s, st]) => `<tr><td><button class="linkbtn" data-stu="${s.id}">${esc(s.name)}</button></td>${surahs.map((n) => { const xs = st.LD.map((k) => st.best.get(n + "|" + k)).filter((x) => x != null); return cell(xs.length ? Math.round(xs.reduce((a, b) => a + +b, 0) / st.LD.length) : null); }).join("")}${cell(st.attRate)}${cell(st.evalPct)}${cell(st.overall)}</tr>`).join("")}
+      </tbody></table></div>` : `<p class="empty">لم ينضمّ أحد بعد. أرسل رابط الدفعة من تبويب «الدفعة والطلاب».</p>`}
+      <p class="note">التقييم الشامل = تقييم الشيخ 50% + التمارين 30% + الحضور 20% (يُحسب ممّا هو متوفّر). نسبة السورة = معدّل أفضل نتيجة في تمارين المستوى.</p>
+      </div><div class="bar noprint"><button class="btn" id="repPrint">🖨 تقرير PDF</button></div>`;
+    $$("[data-stu]", body).forEach((b) => (b.onclick = () => { SV.student = b.dataset.stu; renderStudents(); }));
+    $("#repPrint", body).onclick = () => printReport();
+  }
+  function printReport() { document.body.classList.add("print-report"); toast("اختر «حفظ بصيغة PDF» في نافذة الطباعة.", 4000); setTimeout(() => { window.print(); document.body.classList.remove("print-report"); }, 300); }
+  function svCohort(body) {
+    const c = curCohort();
+    if (!c) { body.innerHTML = `<p class="empty">لا توجد دفعة بعد.</p>`; return; }
+    const link = siteUrl() + "#j=" + c.join_code, studs = studentsOf(c.id);
+    body.innerHTML = `<div class="card"><div class="kv">
+        <label for="cName">اسم الدفعة</label><input id="cName" value="${esc(c.name)}">
+        <label for="cLevel">المستوى</label><select id="cLevel"><option value="">—</option>${TD.levels.map((l) => `<option value="${l.id}"${l.id === c.level_id ? " selected" : ""}>${esc(l.name)}</option>`).join("")}</select>
+        <label for="cLive">رابط الحصة المباشرة (Google Meet، Zoom، تيليغرام، واتساب…)</label><input id="cLive" dir="ltr" placeholder="https://meet.google.com/…" value="${esc(c.live_url)}">
+        <label for="cSched">موعد الحصص</label><input id="cSched" placeholder="مثال: السبت والثلاثاء بعد العصر" value="${esc(c.schedule)}">
+      </div>
+      <div class="bar"><button class="btn primary" id="cSave">حفظ</button><span class="grow"></span><button class="btn ghost danger" id="cDel">حذف الدفعة</button></div></div>
+      <div class="card"><h3 class="sec" style="margin-top:0">انضمام الطلاب</h3>
+        <p>يفتح الطالب هذا الرابط ويكتب اسمه، أو يكتب الرمز في الصفحة الرئيسية.</p>
+        <div class="joincode"><b dir="ltr">${esc(c.join_code)}</b><button class="btn primary" id="cShare">📤 أرسل رابط الدفعة</button><button class="btn" id="cCode">رمز جديد</button></div></div>
+      <h3 class="sec">الطلاب (${AR(studs.length)})</h3>
+      ${studs.length ? `<div class="ptable-wrap"><table class="atable"><thead><tr><th>الاسم</th><th>الهاتف</th><th>آخر دخول</th><th>الدفعة</th><th></th></tr></thead><tbody>
+        ${studs.map((s) => `<tr data-sid="${s.id}"${s.active ? "" : ' class="off"'}><td><input class="sName" value="${esc(s.name)}"></td><td><input class="sPhone" dir="ltr" value="${esc(s.phone || "")}" style="width:120px"></td>
+          <td>${s.last_seen ? fmtDate(s.last_seen) : "—"}</td><td><select class="sCoh">${TD.cohorts.map((x) => `<option value="${x.id}"${x.id === s.cohort_id ? " selected" : ""}>${esc(x.name)}</option>`).join("")}</select></td>
+          <td class="nowrap"><button class="linkbtn" data-stu="${s.id}">التقرير</button> · <button class="linkbtn sAct">${s.active ? "إيقاف" : "تفعيل"}</button> · <button class="linkbtn danger sDel">حذف</button></td></tr>`).join("")}
+      </tbody></table></div>` : `<p class="empty">لم ينضمّ أحد بعد.</p>`}`;
+    $("#cSave", body).onclick = async () => { await tsave("cohort", { id: c.id, name: $("#cName", body).value.trim() || c.name, level_id: $("#cLevel", body).value, live_url: $("#cLive", body).value.trim(), schedule: $("#cSched", body).value.trim() }); toast("حُفظت الدفعة."); renderStudents(); };
+    $("#cDel", body).onclick = async (e) => { if (!e.target.dataset.sure) { e.target.dataset.sure = 1; e.target.textContent = "اضغط مرة أخرى: تُحذف الدفعة وحصصها"; return; } await tdel("cohort", c.id); SV.cohort = null; renderStudents(); };
+    $("#cShare", body).onclick = () => shareText(`انضمّ إلى «${c.name}» في الطريق إلى الإتقان`, link);
+    $("#cCode", body).onclick = async () => { await tsave("cohort", { id: c.id, new_code: true }); toast("صار للدفعة رمز جديد، والرابط القديم لم يعد يعمل."); renderStudents(); };
+    $$("tr[data-sid]", body).forEach((tr) => {
+      const id = tr.dataset.sid, s = TD.students.find((x) => x.id === id);
+      $(".sName", tr).onchange = (e) => tsave("student", { id, name: e.target.value.trim() });
+      $(".sPhone", tr).onchange = (e) => tsave("student", { id, phone: e.target.value.trim() });
+      $(".sCoh", tr).onchange = async (e) => { await tsave("student", { id, cohort_id: e.target.value }); renderStudents(); };
+      $(".sAct", tr).onclick = async () => { await tsave("student", { id, active: !s.active }); renderStudents(); };
+      $(".sDel", tr).onclick = async (e) => { if (!e.target.dataset.sure) { e.target.dataset.sure = 1; e.target.textContent = "تأكيد الحذف"; return; } await tdel("student", id); renderStudents(); };
+    });
+    $$("[data-stu]", body).forEach((b) => (b.onclick = () => { SV.student = b.dataset.stu; renderStudents(); }));
+  }
+  function svSessions(body) {
+    const c = curCohort();
+    if (!c) { body.innerHTML = `<p class="empty">لا توجد دفعة بعد.</p>`; return; }
+    const lvl = levelOf(c), sess = TD.sessions.filter((x) => x.cohort_id === c.id), studs = studentsOf(c.id).filter((s) => s.active);
+    if (!SV.session || !sess.some((x) => x.id === SV.session)) SV.session = (sess[0] || {}).id || null;
+    const se = sess.find((x) => x.id === SV.session), att = new Map(TD.attendance.filter((a) => a[0] === SV.session).map((a) => [a[1], a[2]]));
+    const surOpts = (cur) => `<option value="">—</option>` + (lvl ? lvl.surahs : META.surahs.map((s) => s.n)).map((n) => `<option value="${n}"${+cur === n ? " selected" : ""}>${esc(sName(n))}</option>`).join("");
+    const counts = (id) => { const a = TD.attendance.filter((x) => x[0] === id); return `${AR(a.filter((x) => x[2] === "present" || x[2] === "late").length)}/${AR(studs.length)}`; };
+    body.innerHTML = `<div class="card"><h3 class="sec" style="margin-top:0">حصة جديدة</h3>
+        <div class="bar"><div class="field"><label for="nsAt">التاريخ</label><input type="date" id="nsAt" value="${new Date().toISOString().slice(0, 10)}"></div>
+        <div class="field"><label for="nsSurah">السورة</label><select id="nsSurah">${surOpts("")}</select></div>
+        <div class="field grow"><label for="nsTitle">الموضوع</label><input id="nsTitle" placeholder="مثال: الساكن البيني"></div>
+        <button class="btn primary" id="nsGo">إضافة</button></div></div>
+      ${sess.length ? `<div class="sesslist">${sess.map((x) => `<button data-se="${x.id}" aria-pressed="${x.id === SV.session}">${fmtDate(x.at)}${x.surah ? " · " + esc(sName(x.surah)) : ""}${x.title ? " · " + esc(x.title) : ""} <small>${counts(x.id)}</small></button>`).join("")}</div>` : `<p class="empty">لا حصص مسجّلة بعد.</p>`}
+      ${se ? `<div class="card"><div class="bar"><h3 class="sec grow" style="margin:0">الحضور: ${fmtDate(se.at)}${se.surah ? " · " + esc(sName(se.surah)) : ""}</h3><button class="btn" id="allPresent">الكلّ حاضر</button><button class="btn ghost danger" id="seDel">حذف الحصة</button></div>
+        ${studs.length ? `<div class="attlist">${studs.map((s) => `<div class="att" data-sid="${s.id}"><span>${esc(s.name)}</span><span class="seg">${STATUS.map(([k, l, ic]) => `<button data-st="${k}" aria-pressed="${att.get(s.id) === k}" title="${l}">${ic} ${l}</button>`).join("")}</span></div>`).join("")}</div>` : `<p class="empty">لا طلاب في الدفعة.</p>`}</div>` : ""}`;
+    $("#nsGo", body).onclick = async () => { const r = await tsave("session", { cohort_id: c.id, at: $("#nsAt", body).value, surah: $("#nsSurah", body).value, title: $("#nsTitle", body).value.trim() }); SV.session = r.id; renderStudents(); };
+    $$("[data-se]", body).forEach((b) => (b.onclick = () => { SV.session = b.dataset.se; renderStudents(); }));
+    if (se) {
+      $$(".att", body).forEach((row) => $$("[data-st]", row).forEach((b) => (b.onclick = async () => {
+        const st = att.get(row.dataset.sid) === b.dataset.st ? "" : b.dataset.st;
+        $$("[data-st]", row).forEach((x) => x.setAttribute("aria-pressed", x === b && !!st));
+        await tsave("attendance", { session_id: se.id, student_id: row.dataset.sid, status: st }); att.set(row.dataset.sid, st);
+      })));
+      $("#allPresent", body).onclick = async () => { for (const s of studs) if (!att.get(s.id)) await DB.rpc("itqan_t_save", { p_key: SK(), p_kind: "attendance", p_row: { session_id: se.id, student_id: s.id, status: "present" } }); await loadTD(); renderStudents(); };
+      $("#seDel", body).onclick = async (e) => { if (!e.target.dataset.sure) { e.target.dataset.sure = 1; e.target.textContent = "تأكيد الحذف"; return; } await tdel("session", se.id); SV.session = null; renderStudents(); };
+    }
+  }
+  function svEval(body) {
+    const c = curCohort();
+    if (!c) { body.innerHTML = `<p class="empty">لا توجد دفعة بعد.</p>`; return; }
+    const lvl = levelOf(c), studs = studentsOf(c.id).filter((s) => s.active);
+    if (!studs.length) { body.innerHTML = `<p class="empty">لا طلاب في الدفعة.</p>`; return; }
+    if (!SV.evalStudent || !studs.some((s) => s.id === SV.evalStudent)) SV.evalStudent = studs[0].id;
+    const s = studs.find((x) => x.id === SV.evalStudent), evs = TD.evaluations.filter((e) => e.student_id === s.id);
+    body.innerHTML = `<div class="card"><div class="bar"><div class="field"><label for="evS">الطالب</label><select id="evS">${studs.map((x) => `<option value="${x.id}"${x.id === s.id ? " selected" : ""}>${esc(x.name)}</option>`).join("")}</select></div>
+        <div class="field"><label for="evAt">التاريخ</label><input type="date" id="evAt" value="${new Date().toISOString().slice(0, 10)}"></div>
+        <div class="field"><label for="evSurah">السورة</label><select id="evSurah"><option value="">—</option>${(lvl ? lvl.surahs : []).map((n) => `<option value="${n}">${esc(sName(n))}</option>`).join("")}</select></div></div>
+      <p class="note">ضع لكل معيار علامة من 10 بعد سماع تلاوة الطالب. اترك المعيار فارغاً إن لم تقيّمه.</p>
+      <div class="evgrid">${EVAL.map(([k, l]) => `<label>${esc(l)}</label><div class="evbtns" data-k="${k}">${[...Array(11).keys()].map((i) => `<button data-v="${i}">${AR(i)}</button>`).join("")}</div>`).join("")}</div>
+      <label for="evNote">ملاحظة للطالب</label><textarea id="evNote" rows="2" class="full"></textarea>
+      <div class="bar"><button class="btn primary" id="evGo">حفظ التقييم</button></div></div>
+      <h3 class="sec">تقييمات ${esc(s.name)}</h3>
+      ${evs.length ? `<div class="ptable-wrap"><table class="atable"><thead><tr><th>التاريخ</th><th>السورة</th>${EVAL.map(([, l]) => `<th>${esc(l)}</th>`).join("")}<th>ملاحظة</th><th></th></tr></thead><tbody>
+        ${evs.map((e) => `<tr><td>${fmtDate(e.at)}</td><td>${esc(sName(e.surah))}</td>${EVAL.map(([k]) => `<td>${e.scores[k] != null ? AR(e.scores[k]) : "—"}</td>`).join("")}<td>${esc(e.note)}</td><td><button class="linkbtn danger" data-del="${e.id}">حذف</button></td></tr>`).join("")}
+      </tbody></table></div>` : `<p class="empty">لا تقييم بعد.</p>`}`;
+    const pick = {};
+    $$(".evbtns", body).forEach((g) => $$("button", g).forEach((b) => (b.onclick = () => { const k = g.dataset.k, val = +b.dataset.v; pick[k] = pick[k] === val ? undefined : val; $$("button", g).forEach((x) => x.setAttribute("aria-pressed", pick[k] === +x.dataset.v)); })));
+    $("#evS", body).onchange = (e) => { SV.evalStudent = e.target.value; renderStudents(); };
+    $("#evGo", body).onclick = async () => {
+      const scores = {}; for (const k in pick) if (pick[k] != null) scores[k] = pick[k];
+      if (!Object.keys(scores).length && !$("#evNote", body).value.trim()) { toast("ضع علامة لمعيار واحد على الأقل."); return; }
+      await tsave("evaluation", { student_id: s.id, at: $("#evAt", body).value, surah: $("#evSurah", body).value, scores, note: $("#evNote", body).value.trim() });
+      toast("حُفظ التقييم."); renderStudents();
     };
-    v.innerHTML = `<h2 class="page-title">متابعة الطلاب</h2>
-      <p class="lead">${list.length === 1 ? "طالب واحد أرسل نتائجه" : list.length === 2 ? "طالبان أرسلا نتائجهما" : AR(list.length) + (list.length > 10 ? " طالباً" : " طلاب") + " أرسلوا نتائجهم"}. النتائج محفوظة على هذا الجهاز فقط، ولا تُنشر على الموقع.</p>
-      <h3 class="sec">الأخطاء المشتركة: ما يجب التركيز عليه في الدرس</h3>
-      ${common.length ? `<div class="focus">${common.map(([k, n]) => { const [kind, id] = k.split("|"); return `<div><b>${esc(ruleLabel(kind, id))}</b><span>${esc(KIND_LABEL[kind] || "")}</span><i>${AR(n)} من ${AR(list.length)} · ${AR(cnt.get(k))} خطأ</i></div>`; }).join("")}</div>
-      <p class="fwords">كلمات أخطأ فيها أكثر من طالب: ${cwords.map(([w, n]) => `<span class="chip small">${esc(w)} · ${AR(n)}</span>`).join(" ")}</p>` : `<p class="empty">لا أخطاء مسجّلة.</p>`}
-      <h3 class="sec">الطلاب</h3>${list.map(card).join("")}`;
-    $$("[data-del]", v).forEach((b) => (b.onclick = () => { if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = "اضغط مرة أخرى للتأكيد"; return; } const R2 = LS.get("reports", {}); delete R2[b.dataset.del]; LS.set("reports", R2); renderStudents(); }));
+    $$("[data-del]", body).forEach((b) => (b.onclick = async () => { await tdel("evaluation", b.dataset.del); renderStudents(); }));
+  }
+  function svLevels(body) {
+    const progs = [...new Set(PROGRAMS.concat(TD.levels.map((l) => l.program).filter(Boolean)))];
+    const byProg = progs.map((pg) => [pg, TD.levels.filter((l) => (l.program || PROGRAMS[0]) === pg)]).filter(([, ls]) => ls.length);
+    body.innerHTML = `<p class="lead">الأكاديمية مسارات (التجويد، القراءات، التفسير…)، ولكل مسار مستويات، ولكل مستوى سوره وتمارينه بالترتيب الذي يدرّسه الشيخ.</p>
+      <datalist id="progList">${progs.map((x) => `<option value="${esc(x)}">`).join("")}</datalist>
+      ${byProg.map(([pg, ls]) => `<h3 class="sec">${esc(pg)}</h3>${ls.map((l) => `<div class="card lvl" data-lid="${l.id}"><div class="kv"><label>المسار</label><input class="lProg" list="progList" value="${esc(l.program || PROGRAMS[0])}"><label>اسم المستوى</label><input class="lName" value="${esc(l.name)}">
+          <label>وصف قصير</label><input class="lDesc" value="${esc(l.description)}"></div>
+        <div class="chips">${l.surahs.map((n, i) => `<span class="chip">${esc(sName(n))}<button class="linkbtn" data-rm="${i}" aria-label="إزالة">✕</button></span>`).join("") || `<span class="note">لا سور بعد.</span>`}</div>
+        <label class="note">تمارين المستوى</label><div class="chips">${ALL_DRILLS.map((k) => `<button class="chip" data-dr="${k}" aria-pressed="${lvlDrills(l).includes(k)}">${esc(KIND_LABEL[k])}</button>`).join("")}</div>
+        ${lvlDrills(l).includes("huruf") && l.surahs.length ? `<label class="note">حروف درس المخارج والصفات في كل سورة</label><div class="letters">${l.surahs.map((n) => `<span>${esc(sName(n))} <input data-let="${n}" value="${esc(((l.config || {}).letters || {})[n] || "")}" placeholder="ء ه ع" style="width:90px"></span>`).join("")}</div>` : ""}
+        <div class="bar"><div class="field"><label>أضف سورة</label><select class="lAdd"><option value="">—</option>${META.surahs.filter((s) => !l.surahs.includes(s.n)).map((s) => `<option value="${s.n}">${AR(s.n)} · ${esc(s.ar)}</option>`).join("")}</select></div>
+          <button class="btn primary lSave">حفظ</button><span class="grow"></span><button class="btn ghost danger lDel">حذف المستوى</button></div></div>`).join("")}`).join("")}
+      <button class="btn" id="lvNew">+ مستوى جديد</button>`;
+    $$(".lvl", body).forEach((box) => {
+      const l = TD.levels.find((x) => x.id === box.dataset.lid), sur = l.surahs.slice();
+      const cfg = Object.assign({ drills: lvlDrills(l).slice(), letters: {} }, l.config || {});
+      $$("[data-dr]", box).forEach((b) => (b.onclick = async () => { const k = b.dataset.dr, d = new Set(lvlDrills(l)); d.has(k) ? d.delete(k) : d.add(k); if (!d.size) return; cfg.drills = ALL_DRILLS.filter((x) => d.has(x)); await tsave("level", { id: l.id, config: cfg }); renderStudents(); }));
+      $$("[data-let]", box).forEach((x) => (x.onchange = async () => { cfg.letters = Object.assign({}, cfg.letters, { [x.dataset.let]: x.value.trim() }); await tsave("level", { id: l.id, config: cfg }); toast("حُفظت الحروف."); }));
+      $(".lAdd", box).onchange = async (e) => { if (!e.target.value) return; sur.push(+e.target.value); await tsave("level", { id: l.id, surahs: sur }); renderStudents(); };
+      $$("[data-rm]", box).forEach((b) => (b.onclick = async () => { sur.splice(+b.dataset.rm, 1); await tsave("level", { id: l.id, surahs: sur }); renderStudents(); }));
+      $(".lSave", box).onclick = async () => {
+        const pg = $(".lProg", box).value.trim();
+        if (pg && pg !== l.program) await DB.rpc("itqan_t_level_program", { p_key: SK(), p_id: l.id, p_program: pg });
+        await tsave("level", { id: l.id, name: $(".lName", box).value.trim() || l.name, description: $(".lDesc", box).value.trim() }); toast("حُفظ المستوى."); renderStudents();
+      };
+      $(".lDel", box).onclick = async (e) => { if (!e.target.dataset.sure) { e.target.dataset.sure = 1; e.target.textContent = "تأكيد الحذف"; return; } await tdel("level", l.id); renderStudents(); };
+    });
+    $("#lvNew", body).onclick = async () => { await tsave("level", { name: "مستوى جديد", surahs: [], sort: TD.levels.length + 1 }); renderStudents(); };
+  }
+  async function studentReport(body, s) {
+    if (!s) { SV.student = null; return renderStudents(); }
+    const st = studentStats(s);
+    body.innerHTML = `<div class="report" id="rep">
+      <div class="rep-head"><h3>تقرير الطالب: ${esc(s.name)}</h3><span>${st.c ? esc(st.c.name) : ""}${st.lvl ? " · " + esc(st.lvl.name) : ""} · ${fmtDate(new Date())}</span></div>
+      <div class="stats s4"><div><b>${pctTxt(st.overall)}</b><span>التقييم الشامل</span></div><div><b>${pctTxt(st.evalPct)}</b><span>تقييم الشيخ</span></div><div><b>${pctTxt(st.drills)}</b><span>التمارين</span></div><div><b>${pctTxt(st.attRate)}</b><span>الحضور (${AR(st.cnt)} حصة)</span></div></div>
+      ${Object.values(st.crit).some((x) => x != null) ? `<h3 class="sec">تقييم الشيخ لكل معيار</h3><div class="bars">${EVAL.map(([k, l]) => { const x = st.crit[k] == null ? null : Math.round(st.crit[k] * 10); return `<div><span>${esc(l)}</span><i style="--w:${x || 0}%" class="${scoreCls(x)}"></i><b>${pctTxt(x)}</b></div>`; }).join("")}</div>` : ""}
+      <h3 class="sec">ما يحتاج التركيز عليه</h3>${focusHTML(errStats(st.errs))}
+      <h3 class="sec">التمارين في سور المستوى</h3>
+      <div class="ptable-wrap"><table class="atable matrix"><thead><tr><th>السورة</th>${st.LD.map((k) => `<th>${esc(KIND_LABEL[k])}</th>`).join("")}</tr></thead><tbody>
+        ${st.surahs.map((n) => `<tr><td>${esc(sName(n))}</td>${st.LD.map((k) => cell(st.best.has(n + "|" + k) ? +st.best.get(n + "|" + k) : null)).join("")}</tr>`).join("")}</tbody></table></div>
+      <h3 class="sec">الحضور</h3>
+      ${st.sess.length ? `<div class="chips">${st.sess.map((x) => { const a = st.att.get(x.id), S = STATUS.find((y) => y[0] === a); return `<span class="chip small att-${a || "none"}">${fmtDate(x.at)} · ${S ? S[1] : "لم يُسجَّل"}</span>`; }).join("")}</div>` : `<p class="empty">لا حصص بعد.</p>`}
+      ${st.evs.some((e) => e.note) ? `<h3 class="sec">ملاحظات الشيخ</h3><ul>${st.evs.filter((e) => e.note).map((e) => `<li>${fmtDate(e.at)}${e.surah ? " · " + esc(sName(e.surah)) : ""}: ${esc(e.note)}</li>`).join("")}</ul>` : ""}
+      </div><div class="bar noprint"><button class="btn" id="repBack">→ رجوع</button><button class="btn" id="repPrint">🖨 تقرير PDF</button></div>`;
+    $("#repBack", body).onclick = () => { SV.student = null; renderStudents(); };
+    $("#repPrint", body).onclick = () => printReport();
+  }
+
+  /* ---------------- the student's own page: results, attendance, the cheikh's evaluation ---------------- */
+  async function renderProgress() {
+    const v = $("#v-progress"), A = LS.get("attempts", []);
+    if (TOK()) refreshMe().then((m) => { if (m && location.hash === "#progress" && !v.dataset.fresh) { v.dataset.fresh = 1; renderProgress(); } });
+    delete v.dataset.fresh;
+    const me = TOK() ? ME : null, tot = A.reduce((s, a) => s + a.n, 0), ok = A.reduce((s, a) => s + a.r, 0);
+    const sess = me ? me.sessions || [] : [], evs = me ? me.evaluations || [] : [];
+    let got = 0, cnt = 0; for (const x of sess) { if (!x.status || x.status === "excused") continue; cnt++; got += x.status === "present" ? 1 : x.status === "late" ? 0.75 : 0; }
+    const crit = {}; for (const [k] of EVAL) { const xs = evs.map((e) => e.scores && e.scores[k]).filter((x) => x != null); crit[k] = xs.length ? Math.round((10 * xs.reduce((a, b) => a + +b, 0)) / xs.length) : null; }
+    v.innerHTML = `<h2 class="page-title">نتائجي</h2>
+      ${me ? `<p class="lead">${esc(me.student.name)}${me.cohort ? " · " + esc(me.cohort.name) : ""}${me.level ? " · " + esc(me.level.name) : ""}. نتائج تمارينك تصل إلى الشيخ وحدها.</p>`
+        : `<p class="lead">نتائجك محفوظة على هذا الجهاز. ${DB.ok() ? "انضمّ إلى دفعتك من الصفحة الرئيسية لتصل إلى الشيخ وحدها." : ""}</p>`}
+      <div class="stats s4"><div><b>${AR(A.length)}</b><span>محاولة</span></div><div><b>${pctTxt(pct(ok, tot))}</b><span>نسبة الصواب</span></div>
+        <div><b>${me ? pctTxt(pct(got, cnt)) : "—"}</b><span>الحضور</span></div><div><b>${AR(A.filter((a) => a.ex).length)}</b><span>امتحان</span></div></div>
+      ${evs.length ? `<h3 class="sec">تقييم الشيخ</h3><div class="bars">${EVAL.map(([k, l]) => `<div><span>${esc(l)}</span><i style="--w:${crit[k] || 0}%" class="${scoreCls(crit[k])}"></i><b>${pctTxt(crit[k])}</b></div>`).join("")}</div>
+        ${evs.filter((e) => e.note).slice(0, 5).map((e) => `<p class="note">${fmtDate(e.at)}${e.surah ? " · " + esc(sName(e.surah)) : ""}: ${esc(e.note)}</p>`).join("")}` : ""}
+      <h3 class="sec">ما تحتاج التركيز عليه</h3>${focusHTML(errStats(rowsOf(A)))}
+      ${sess.length ? `<h3 class="sec">حضوري</h3><div class="chips">${sess.map((x) => { const S = STATUS.find((y) => y[0] === x.status); return `<span class="chip small att-${x.status || "none"}">${fmtDate(x.at)}${x.surah ? " · " + esc(sName(x.surah)) : ""} · ${S ? S[1] : "لم يُسجَّل"}</span>`; }).join("")}</div>` : ""}
+      <h3 class="sec">محاولاتي</h3>${A.length ? attemptsTable(A) : `<p class="empty">لم تُجرِ أي تمرين بعد.</p>`}
+      ${me ? `<p class="note">لفتح حسابك على جهاز آخر: <button class="linkbtn" id="myLink">أرسل رابط حسابي إلى نفسي</button> · <button class="linkbtn" id="logout">خروج من هذا الجهاز</button></p>` : ""}`;
+    if (me) {
+      $("#myLink", v).onclick = () => shareText("حسابي في الطريق إلى الإتقان", siteUrl() + "#s=" + encodeURIComponent(TOK()));
+      $("#logout", v).onclick = (e) => { if (!e.target.dataset.sure) { e.target.dataset.sure = 1; e.target.textContent = "اضغط مرة أخرى للتأكيد"; return; } LS.del("stok"); LS.del("me"); ME = null; location.hash = "#home"; };
+    }
   }
   /** Hamzat al-wasl drill: every marked wasl alif is drawn plain; the student gives each one of the six forms. */
-  const WASL_LABEL = { "\u064E": "بعد فتح", "\u0650": "بعد كسر", "\u064F": "بعد ضمّ", "\u06EC": "يُبدأ بالفتح", "\u06EA": "يُبدأ بالكسر", "\u06DF": "يُبدأ بالضمّ" };
-  const waslKey = (text) => text.match(WASL_RE)[0].slice(1);
-  const waslLabel = (k) => `${WASL_LABEL[k[0]]}<br>${WASL_LABEL[k[1]]}`;
+  const WASL_LABEL = { "\u06EC": "نقطة فوق الألف<br>يُبدأ بالفتح", "\u06EA": "نقطة تحت الألف<br>يُبدأ بالكسر", "\u06DF": "نقطة في وسطها<br>يُبدأ بالضمّ" };
+  const waslKey = (text) => text.match(WASL_RE)[0][2]; // the ibtida dot: the only sign the cheikh writes on the alif
+  const waslLabel = (k) => WASL_LABEL[k[k.length - 1]] || "";
   function renderWasl(v, S) {
     const sc = drillScope(S);
     P.wasl = P.wasl || {};
@@ -1341,10 +1570,9 @@
     const aopts = ayahOpts(S);
     v.innerHTML = `${surahHead(P.surah)}${surahTabs("wasl")}
       <p class="lead">كل همزة وصل مرسومة هنا ألفاً مجرّدة. اختر الكلمة ثم اختر شكل همزتها.</p>
-      <details class="waslref" open><summary>منظومة ضبط همزة الوصل</summary>
-        <p><b>الصلة (الجرّة)</b> تدلّ على سقوط الهمزة في الوصل، وموضعها بحسب حركة الحرف الذي قبلها: <b>فوق</b> الألف بعد الفتح، <b>تحتها</b> بعد الكسر، <b>في وسطها</b> بعد الضمّ. وبعد حرف المدّ تتبع حركة ما قبله (فِي الأرض: تحت)، وبعد التنوين تكون تحت الألف لأنه يُكسر لالتقاء الساكنين، أو في وسطها إن ضُمّ (مثل: مُتَشَٰبِهٍ انظُروا)، وفي أول الآية تتبع آخر الآية التي قبلها.</p>
-        <p><b>نقطة الابتداء</b> تدلّ على حركة الهمزة إذا بدأتَ بالكلمة: <b>فوق</b> الألف = فتح (همزة «ال» التعريف)، <b>تحتها</b> = كسر، <b>في وسطها</b> = ضمّ (الفعل الذي ثالثه مضموم ضمّاً لازماً).</p>
-        <p>تنبيه: الألف التي عليها نقطة وحدها، أو نقطة بعدها حركة (مثل: يَشَآءُ إلى، شُهَدَآءَ إذ)، ليست همزة وصل، بل همزة قطع مسهّلة أو مبدلة عند قالون.</p>
+      <details class="waslref" open><summary>ضبط همزة الوصل</summary>
+        <p>همزة الوصل تثبت في الابتداء وتسقط في الوصل. علامتها <b>نقطة واحدة</b> على الألف تدلّ على الحركة التي يُبدأ بها: <b>فوق</b> الألف = يُبدأ بالفتح (همزة «ال»)، <b>تحتها</b> = يُبدأ بالكسر (اِهدنا، اِبتغاء)، <b>في وسطها</b> = يُبدأ بالضمّ (اُدعوا، اُنظروا: ثالث الفعل مضموم ضمّاً لازماً).</p>
+        <p>الألف بعد حرف زائد (وَالليل، فَالمغيرات، بِالحسنى) تُكتب مجرّدة بلا نقطة، لأنه لا يُبتدأ بها.</p>
       </details>
       <div class="bar">
         <div class="field"><label for="pS">السورة</label><select id="pS">${opts}</select></div>
@@ -1437,6 +1665,197 @@
     $("#ptClear", v).onclick = () => { resetExercise(); renderPractice(); };
     bindExam(v);
   }
+  /* ---------------- the cheikh's tables: المدود، الراءات، المخارج والصفات ----------------
+     As in his workbook («تدريب: املأ الجداول بما يناسب»): the word (or letter) is given, the student fills the
+     rest, and «تحقّق» shows the answer with its reason. */
+  const MADD_T = {
+    tabii: ["المدّ الطبيعي", "2", "حرف مدّ لم يأتِ بعده همز ولا سكون."],
+    muttasil: ["المدّ المتّصل", "4-5", "حرف مدّ بعده همز في الكلمة نفسها."],
+    munfasil: ["المدّ المنفصل", "2-4", "حرف مدّ في آخر الكلمة، والهمز في أوّل الكلمة التي بعدها."],
+    lazim: ["المدّ اللازم", "6", "حرف مدّ بعده سكون أصلي ثابت وصلاً ووقفاً."],
+    arid: ["المدّ العارض للسكون", "2-4-6", "حرف مدّ بعده حرف سُكّن لأجل الوقف."],
+    badal: ["مدّ البدل", "2", "همز بعده حرف مدّ (تقدّم الهمز على المدّ)، ولقالون فيه القصر."],
+    leen: ["مدّ اللين", "2-4-6", "واو أو ياء ساكنة بعد فتح، وبعدها حرف سُكّن للوقف."],
+    sila_s: ["الصلة الصغرى", "2", "هاء الضمير بين متحرّكين، وليس بعدها همز."],
+    sila_k: ["الصلة الكبرى", "2-4", "هاء الضمير بين متحرّكين وبعدها همز: تُمدّ كالمنفصل."],
+  };
+  const MADD_LEN = { "2": "حركتان", "4-5": "4 أو 5 حركات", "2-4": "2 أو 4 حركات (القصر أو التوسّط)", "6": "6 حركات", "2-4-6": "2 أو 4 أو 6 حركات" };
+  const HAMZA_L = "ءأإؤئ";
+  /** Like the cheikh's tables, a whole surah gives a few words of each kind (at most two per kind, ten in all), not every one. */
+  function sampleRows(rows, keyOf, scope) {
+    if (scope !== "all") return rows;
+    const seen = new Map(), out = [];
+    for (const r of rows) { const k = keyOf(r), n = seen.get(k) || 0; if (n < 2 && out.length < 10) { seen.set(k, n + 1); out.push(r); } }
+    return out;
+  }
+  /** Every madd in the scope: the word, the char that carries it, its type. */
+  function maddRows(sc, S) {
+    const rows = [];
+    for (const it of sc.items) {
+      const w = it.an, U = w.units, next = sc.items.find((x) => x.ai === it.ai && x.wi > it.wi);
+      const nextHamza = next && next.an.units.length && HAMZA_L.includes(next.an.units[0].L) && next.an.units[0].role !== "wasl";
+      // the first word of the next ayah, for a madd letter that ends the ayah (تُجْزَىٰ ۝ إِلَّا: منفصل when the ayahs are joined)
+      const nAy = !next && S.ayahs[it.ai + 1], nAn = nAy && analyze(S, it.ai + 1), nU = nAn && (nAn.find(Boolean) || {}).units;
+      const hamzaAfter = next ? nextHamza : !!(nU && nU.length && HAMZA_L.includes(nU[0].L) && nU[0].role !== "wasl");
+      const isLast = !next;
+      U.forEach((u, k) => {
+        const c = (i) => (i != null && w.cand[i] ? w.cand[i].find((x) => /^madd_/.test(x.cat)) : null);
+        const at = u.role === "madd" ? u.b : u.madd ? u.madd.i : u.dagger ? u.dagger.i : null, m = c(at);
+        if (m) {
+          let t = m.cat.slice(5);
+          // a hamza before the madd letter (ءَامَنُوا), or a hamza carrying the maddah (لَلْءَاخِرَةُ written أٓ): madd al-badal
+          let p = k - 1; while (p >= 0 && (U[p].role === "zaid" || U[p].role === "kashida")) p--;
+          const host = u.role === "madd" ? U[p] : u;
+          if ((t === "tabii" || (t !== "muttasil" && t !== "munfasil" && u.madd && HAMZA_L.includes(u.L))) && host && HAMZA_L.includes(host.L) && host.role !== "wasl") t = "badal";
+          else if (t === "tabii" && u.role === "madd" && k === U.length - 1 && hamzaAfter) t = "munfasil";
+          if (MADD_T[t]) rows.push({ id: it.id + ":" + at, it, at, t });
+        }
+        u.marks.forEach((mk) => { if ((mk.t === "swaw" || mk.t === "sya") && !isLast) rows.push({ id: it.id + ":" + mk.i, it, at: mk.i, t: nextHamza ? "sila_k" : "sila_s" }); });
+        // a sakin waw or ya after a fatha, before the letter stopped on at the end of the ayah: madd al-leen
+        if (isLast && (u.L === "و" || u.L === "ي") && u.sukun && u.role !== "madd" && k === U.length - 2 && U[k - 1] && U[k - 1].vowel === "a") rows.push({ id: it.id + ":" + u.b, it, at: u.b, t: "leen" });
+      });
+    }
+    return rows;
+  }
+  /** Every ra in the scope with its ruling (from the engine's colouring) and the reason. */
+  function raRows(sc) {
+    const rows = [];
+    for (const it of sc.items) {
+      const w = it.an, U = w.units, isLast = !sc.items.some((x) => x.ai === it.ai && x.wi > it.wi);
+      U.forEach((u, k) => {
+        if (u.L !== "ر" || u.role !== "letter") return;
+        const heavy = (w.cand[u.b] || []).some((x) => x.cat === "takhlis"), stop = isLast && k === U.length - 1;
+        let p = k - 1; while (p >= 0 && ["zaid", "kashida", "lamShams"].includes(U[p].role)) p--;
+        const pv = U[p], pvv = pv ? (pv.role === "madd" ? (pv.L === "ا" || pv.L === "ى" ? "a" : pv.L === "و" ? "u" : "i") : pv.vowel) : null;
+        let why;
+        if (u.vowel && !stop) why = u.vowel === "i" ? "مكسورة" : u.vowel === "a" ? "مفتوحة" : "مضمومة";
+        else if (pv && !pvv && pv.L === "ي") why = "ساكنة للوقف بعد ياء ساكنة";
+        else if (pvv) why = `ساكنة${stop ? " للوقف" : ""} بعد ${pvv === "i" ? "كسر" : pvv === "a" ? "فتح" : "ضمّ"}`;
+        else { let q = p - 1; while (q >= 0 && !U[q].vowel) q--; const v2 = q >= 0 ? U[q].vowel : null; why = `ساكنة${stop ? " للوقف" : ""} وقبلها ساكن${v2 ? " قبله " + (v2 === "i" ? "كسر" : v2 === "a" ? "فتح" : "ضمّ") : ""}`; }
+        if (heavy && /بعد كسر/.test(why)) why += "، وبعدها حرف استعلاء";
+        rows.push({ id: it.id + ":" + u.b, it, at: u.b, t: heavy ? "tafkhim" : "tarqiq", why });
+      });
+    }
+    return rows;
+  }
+  // The places of articulation and the qualities of the letters (المقدّمة الجزرية).
+  const MAKHARIJ = [
+    ["jawf", "الجوف", "حروف المدّ"], ["aqsa_halq", "أقصى الحلق", "ء ه"], ["wasat_halq", "وسط الحلق", "ع ح"], ["adna_halq", "أدنى الحلق", "غ خ"],
+    ["qaf", "أقصى اللسان مع ما يحاذيه من الحنك الأعلى", "ق"], ["kaf", "أقصى اللسان أسفل من مخرج القاف قليلاً", "ك"],
+    ["wasat_lisan", "وسط اللسان مع ما يحاذيه من الحنك الأعلى", "ج ش ي"], ["dad", "إحدى حافتي اللسان مع ما يحاذيها من الأضراس العليا", "ض"],
+    ["lam", "أدنى حافة اللسان إلى منتهى طرفها مع لثة الأسنان العليا", "ل"], ["nun", "طرف اللسان مع لثة الثنيتين العلييين، تحت اللام قليلاً", "ن"],
+    ["ra", "طرف اللسان مع ظهره، قريباً من مخرج النون", "ر"], ["nit", "طرف اللسان مع أصول الثنيتين العلييين", "ط د ت"],
+    ["asal", "طرف اللسان مع ما فوق الثنيتين السفليين", "ص س ز"], ["lithawi", "طرف اللسان مع أطراف الثنيتين العلييين", "ظ ذ ث"],
+    ["fa", "باطن الشفة السفلى مع أطراف الثنيتين العلييين", "ف"], ["shafatan", "الشفتان", "ب م و"], ["khayshum", "الخيشوم", "الغنّة"],
+  ];
+  const makhrajOf = (L) => (MAKHARIJ.find((m) => m[0] !== "jawf" && m[0] !== "khayshum" && m[2].split(" ").includes(L)) || [])[0];
+  const SIFAT_PAIRS = [[["jahr", "الجهر"], ["hams", "الهمس"]], [["shidda", "الشدّة"], ["bayniyya", "البينيّة"], ["rakhawa", "الرخاوة"]], [["istila", "الاستعلاء"], ["istifal", "الاستفال"]],
+    [["itbaq", "الإطباق"], ["infitah", "الانفتاح"]], [["idhlaq", "الإذلاق"], ["ismat", "الإصمات"]]];
+  const SIFAT_SOLO = [["safir", "الصفير"], ["qalqala", "القلقلة"], ["inhiraf", "الانحراف"], ["takrir", "التكرير"], ["tafashshi", "التفشّي"], ["istitala", "الاستطالة"], ["ghunna", "الغنّة"], ["lin", "اللين"]];
+  function sifatOf(L) {
+    const has = (s) => s.includes(L);
+    const pair = [has("فحثهشخصسكت") ? "hams" : "jahr", has("أجدقطبكتء") ? "shidda" : has("لنعمر") ? "bayniyya" : "rakhawa", has("خصضغطقظ") ? "istila" : "istifal",
+      has("صضطظ") ? "itbaq" : "infitah", has("فرمنلب") ? "idhlaq" : "ismat"];
+    const solo = [["safir", "صسز"], ["qalqala", "قطبجد"], ["inhiraf", "لر"], ["takrir", "ر"], ["tafashshi", "ش"], ["istitala", "ض"], ["ghunna", "نم"], ["lin", "وي"]].filter(([, x]) => has(x)).map(([k]) => k);
+    return { pair, solo };
+  }
+  const LETTER_NAMES = { "ء": "الهمزة", "ب": "الباء", "ت": "التاء", "ث": "الثاء", "ج": "الجيم", "ح": "الحاء", "خ": "الخاء", "د": "الدال", "ذ": "الذال", "ر": "الراء", "ز": "الزاي", "س": "السين", "ش": "الشين", "ص": "الصاد", "ض": "الضاد", "ط": "الطاء", "ظ": "الظاء", "ع": "العين", "غ": "الغين", "ف": "الفاء", "ق": "القاف", "ك": "الكاف", "ل": "اللام", "م": "الميم", "ن": "النون", "ه": "الهاء", "و": "الواو", "ي": "الياء" };
+  /** The letters of a lesson: the cheikh's choice for this surah in the student's level, else the throat letters. */
+  function lessonLetters(n) {
+    const lv = TOK() && ME && ME.level, cfg = lv && lv.config && lv.config.letters;
+    const s = cfg && cfg[n];
+    return Array.from((s || P.letters || "ءهعحغخ").replace(/[^ءبتثجحخدذرزسشصضطظعغفقكلمنهوي]/g, ""));
+  }
+  function tableShell(v, S, kind, lead, inner, canSolve) {
+    const opts = META.surahs.map((s) => `<option value="${s.n}"${s.n === P.surah ? " selected" : ""}>${AR(s.n)} · ${esc(s.ar)}</option>`).join("");
+    v.innerHTML = `${surahHead(P.surah)}${surahTabs(kind)}<p class="lead">${lead}</p>
+      ${kind === "huruf" ? "" : `<div class="bar"><div class="field"><label for="pS">السورة</label><select id="pS">${opts}</select></div>
+        <div class="field"><label for="pA">الآية</label><select id="pA">${ayahOpts(S)}</select></div>
+        <button class="iconbtn" id="pPrev" aria-label="الآية السابقة">›</button><button class="iconbtn" id="pNext" aria-label="الآية التالية">‹</button></div>`}
+      ${inner}
+      <div class="bar"><button class="btn primary" id="tCheck"${P.locked ? " disabled" : ""}>${P.exam ? "سلّم الامتحان" : "تحقّق"}</button>${canSolve && !(P.exam && !P.locked) ? `<button class="btn" id="tSolve">${P.solved ? "عُد إلى إجاباتي" : "اعرض الحل"}</button>` : ""}<button class="btn" id="tClear">${P.locked ? "امتحان جديد" : "امسح الكل"}</button>${examBtn()}</div>`;
+    bindSurahTabs(v); bindExam(v);
+    if ($("#pS", v)) {
+      $("#pS", v).onchange = (e) => { P.surah = +e.target.value; ui.surah = P.surah; LS.set("surah", ui.surah); P.ai = defAi(P.surah); resetExercise(); renderPractice(); };
+      $("#pA", v).onchange = (e) => { P.ai = +e.target.value; resetExercise(); renderPractice(); };
+      $("#pPrev", v).onclick = () => { if (P.ai >= 0) { P.ai--; resetExercise(); renderPractice(); } };
+      $("#pNext", v).onclick = () => { if (P.ai < S.ayahs.length - 1) { P.ai++; resetExercise(); renderPractice(); } };
+    }
+    $("#tCheck", v).onclick = () => { P.checked = true; P.solved = false; P.fresh = true; renderPractice(); };
+    if ($("#tSolve", v)) $("#tSolve", v).onclick = () => { P.solved = !P.solved; renderPractice(); };
+    $("#tClear", v).onclick = () => { resetExercise(); renderPractice(); };
+  }
+  const pickWord = (wd, at) => { const c = []; c[at] = "pick"; c.s2 = []; return wordSVG(wd, c); };
+  const ansOf = () => P.ans || (P.ans = {});
+  function bindAnswers(v) {
+    $$("[data-ans]", v).forEach((x) => (x.onchange = () => { if (P.locked) return; ansOf()[x.dataset.ans] = x.value; P.checked = false; }));
+  }
+  function renderMadd(v, S) {
+    const sc = drillScope(S), rows = sampleRows(maddRows(sc, S), (r) => r.t, sc.key), A = ansOf();
+    let result = "";
+    if (P.checked) {
+      let right = 0; const errs = [];
+      for (const r of rows) { const ok = A[r.id + "t"] === r.t && A[r.id + "l"] === MADD_T[r.t][1]; if (ok) right++; else errs.push([r.it.wd[0], r.t, A[r.id + "t"] || ""]); }
+      logAttempt("madd", S, sc.key, right, rows.length, errs.filter((e) => e[2]).length, errs);
+      result = `<div class="result"><b>${right === rows.length ? "أحسنت! الجدول صحيح كله." : `الصحيح ${AR(right)} من ${AR(rows.length)}.`}</b>${examNote()}</div>`;
+    }
+    const show = P.checked || P.solved;
+    const inner = rows.length ? `<div class="ptable-wrap"><table class="atable ttable"><thead><tr><th>الكلمة</th><th>نوع المدّ</th><th>الحكم (المقدار)</th><th>التعليل</th></tr></thead><tbody>
+      ${rows.map((r) => { const t = P.solved ? r.t : A[r.id + "t"] || "", l = P.solved ? MADD_T[r.t][1] : A[r.id + "l"] || "", ok = t === r.t && l === MADD_T[r.t][1];
+        return `<tr class="${P.checked && !P.solved ? (ok ? "right" : "wrong") : ""}"><td class="tw">${pickWord(r.it.wd, r.at)}</td>
+        <td><select data-ans="${r.id}t"${P.locked || P.solved ? " disabled" : ""}><option value="">—</option>${Object.entries(MADD_T).map(([k, x]) => `<option value="${k}"${t === k ? " selected" : ""}>${x[0]}</option>`).join("")}</select></td>
+        <td><select data-ans="${r.id}l"${P.locked || P.solved ? " disabled" : ""}><option value="">—</option>${Object.entries(MADD_LEN).map(([k, x]) => `<option value="${k}"${l === k ? " selected" : ""}>${x}</option>`).join("")}</select></td>
+        <td class="why">${show && !(P.exam && P.checked && !P.solved && !P.locked) ? `${P.checked && !ok ? `<b>${MADD_T[r.t][0]} · ${MADD_LEN[MADD_T[r.t][1]]}</b><br>` : ""}${MADD_T[r.t][2]}` : ""}</td></tr>`; }).join("")}
+      </tbody></table></div>${result}` : `<p class="empty">لا مدّ في هذا الموضع.</p>`;
+    tableShell(v, S, "madd", "الكلمة معطاة وحرف المدّ فيها مُعلَّم: اختر نوع المدّ ومقداره لقالون، ثم اضغط «تحقّق» لترى التعليل.", inner, true);
+    bindAnswers(v);
+  }
+  function renderRa(v, S) {
+    const sc = drillScope(S), rows = sampleRows(raRows(sc), (r) => r.t + r.why, sc.key), A = ansOf();
+    let result = "";
+    if (P.checked) {
+      let right = 0; const errs = [];
+      for (const r of rows) { if (A[r.id] === r.t) right++; else errs.push([r.it.wd[0], r.t, A[r.id] || ""]); }
+      logAttempt("ra", S, sc.key, right, rows.length, errs.filter((e) => e[2]).length, errs);
+      result = `<div class="result"><b>${right === rows.length ? "أحسنت! كل الراءات صحيحة." : `الصحيح ${AR(right)} من ${AR(rows.length)}.`}</b>${examNote()}</div>`;
+    }
+    const inner = rows.length ? `<div class="ptable-wrap"><table class="atable ttable"><thead><tr><th>الكلمة</th><th>الحكم</th><th>التعليل</th></tr></thead><tbody>
+      ${rows.map((r) => { const t = P.solved ? r.t : A[r.id] || "", ok = t === r.t;
+        return `<tr class="${P.checked && !P.solved ? (ok ? "right" : "wrong") : ""}"><td class="tw">${pickWord(r.it.wd, r.at)}</td>
+        <td><span class="seg">${[["tafkhim", "تفخيم"], ["tarqiq", "ترقيق"]].map(([k, l]) => `<button data-ra="${r.id}" data-v="${k}" aria-pressed="${t === k}"${P.locked || P.solved ? " disabled" : ""}>${l}</button>`).join("")}</span></td>
+        <td class="why">${P.checked || P.solved ? `${P.checked && !ok ? `<b>${r.t === "tafkhim" ? "تفخيم" : "ترقيق"}</b>: ` : ""}راء ${esc(r.why)}` : ""}</td></tr>`; }).join("")}
+      </tbody></table></div>${result}` : `<p class="empty">لا راء في هذا الموضع.</p>`;
+    tableShell(v, S, "ra", "اختر حكم كل راء: تفخيم أو ترقيق، ثم اضغط «تحقّق» لترى التعليل.", inner, true);
+    $$("[data-ra]", v).forEach((b) => (b.onclick = () => { if (P.locked) return; A[b.dataset.ra] = b.dataset.v; P.checked = false; renderPractice(); }));
+  }
+  function renderHuruf(v, S) {
+    const letters = lessonLetters(S.n), A = ansOf();
+    let result = "", right = 0, total = 0;
+    const errs = [];
+    const grade = (L) => {
+      const sf = sifatOf(L), mk = makhrajOf(L);
+      const okM = A[L + ":m"] === mk, okP = sf.pair.every((x, i) => A[L + ":p" + i] === x), mine = new Set((A[L + ":s"] || "").split(",").filter(Boolean)), okS = sf.solo.length === mine.size && sf.solo.every((x) => mine.has(x));
+      return { okM, okP, okS, sf, mk };
+    };
+    if (P.checked) {
+      for (const L of letters) { const g = grade(L); total += 3; right += g.okM + g.okP + g.okS; if (!g.okM) errs.push([L, "makhraj", ""]); if (!g.okP || !g.okS) errs.push([L, "sifat", ""]); }
+      logAttempt("huruf", S, LETTER_NAMES[letters[0]] ? letters.join("") : "all", right, total, 0, errs);
+      result = `<div class="result"><b>${right === total ? "أحسنت! المخارج والصفات صحيحة." : `الصحيح ${AR(right)} من ${AR(total)}.`}</b>${examNote()}</div>`;
+    }
+    const inner = `${!(TOK() && ME && ME.level && ME.level.config && ME.level.config.letters && ME.level.config.letters[S.n]) ? `<div class="bar"><div class="field grow"><label for="hLet">الحروف</label><input id="hLet" value="${esc(letters.join(" "))}" placeholder="مثال: ء ه ع"></div></div>` : ""}
+      ${letters.map((L) => { const g = grade(L), shw = P.solved, mk = shw ? g.mk : A[L + ":m"] || "", mine = new Set(shw ? g.sf.solo : (A[L + ":s"] || "").split(",").filter(Boolean));
+        return `<div class="card hcard"><h3>${esc(LETTER_NAMES[L] || L)} <span class="hl">${L}</span></h3>
+        <div class="kv"><label>المخرج</label><select data-ans="${L}:m"${P.locked || P.solved ? " disabled" : ""} class="${P.checked ? (g.okM ? "ok" : "bad") : ""}"><option value="">—</option>${MAKHARIJ.map(([k, l]) => `<option value="${k}"${mk === k ? " selected" : ""}>${l}</option>`).join("")}</select>
+        <label>صفات لها ضدّ</label><div class="pairs ${P.checked ? (g.okP ? "ok" : "bad") : ""}">${SIFAT_PAIRS.map((grp, i) => `<span class="seg">${grp.map(([k, l]) => `<button data-sf="${L}:p${i}" data-v="${k}" aria-pressed="${(shw ? g.sf.pair[i] : A[L + ":p" + i]) === k}"${P.locked || P.solved ? " disabled" : ""}>${l}</button>`).join("")}</span>`).join("")}</div>
+        <label>صفات لا ضدّ لها</label><div class="pairs ${P.checked ? (g.okS ? "ok" : "bad") : ""}"><span class="seg wrap">${SIFAT_SOLO.map(([k, l]) => `<button data-solo="${L}" data-v="${k}" aria-pressed="${mine.has(k)}"${P.locked || P.solved ? " disabled" : ""}>${l}</button>`).join("")}</span></div></div>
+        ${P.checked && !(g.okM && g.okP && g.okS) ? `<p class="why"><b>الجواب:</b> ${esc((MAKHARIJ.find((m) => m[0] === g.mk) || [])[1] || "")} · ${g.sf.pair.map((x, i) => SIFAT_PAIRS[i].find((y) => y[0] === x)[1]).join("، ")}${g.sf.solo.length ? " · " + g.sf.solo.map((x) => SIFAT_SOLO.find((y) => y[0] === x)[1]).join("، ") : ""}</p>` : ""}</div>`; }).join("")}
+      ${result}`;
+    tableShell(v, S, "huruf", "لكل حرف من حروف الدرس: اختر مخرجه، وصفاته التي لها ضدّ، وصفاته التي لا ضدّ لها.", inner, true);
+    bindAnswers(v);
+    $$("[data-sf]", v).forEach((b) => (b.onclick = () => { if (P.locked) return; A[b.dataset.sf] = b.dataset.v; P.checked = false; renderPractice(); }));
+    $$("[data-solo]", v).forEach((b) => (b.onclick = () => { if (P.locked) return; const k = b.dataset.solo + ":s", s = new Set((A[k] || "").split(",").filter(Boolean)); s.has(b.dataset.v) ? s.delete(b.dataset.v) : s.add(b.dataset.v); A[k] = [...s].join(","); P.checked = false; renderPractice(); }));
+    const hl = $("#hLet", v); if (hl) hl.onchange = () => { P.letters = hl.value; resetExercise(); renderPractice(); };
+  }
   async function renderPractice() {
     const v = $("#v-practice");
     let S;
@@ -1444,6 +1863,9 @@
     if (P.ai >= S.ayahs.length) P.ai = 0;
     if (P.kind === "paint") return renderPaint(v, S);
     if (P.kind === "wasl") return renderWasl(v, S);
+    if (P.kind === "madd") return renderMadd(v, S);
+    if (P.kind === "ra") return renderRa(v, S);
+    if (P.kind === "huruf") return renderHuruf(v, S);
     const nunKind = P.kind === "nun";
     if (P.exam) P.mode = "exercise";
     const cols = nunKind ? T.NUN_RULES.map((r) => ({ id: r.id, name: r.name, cat: r.cat, short: r.short, vis: ["ghunna", "bayni", "idgham"] })) : tableCols();
@@ -1552,7 +1974,7 @@
       <h3>مفتاح الألوان</h3>
       <div class="colorkey">${key}</div>
       <p>فإذا انتبه الطالب من خلال هذه الألوان إلى زمن الحرف من شدّة وبينيّة ورخاوة وتمكين الغنّة، وإلى إتمام الحركة وتخليص الحروف، فإنّه سيحصل على مستوى جيد من الإتقان.</p>
-      ${STATIC ? `<h3>بدون اتصال</h3><p>يمكنك تثبيت الصفحة كتطبيق من قائمة المتصفح («إضافة إلى الشاشة الرئيسية»)، وحفظ المصحف كاملاً على جهازك لتقرأ دون إنترنت.</p><p><button class="btn" id="cacheAll">حفظ المصحف كاملاً على هذا الجهاز (١١ ميغابايت تقريباً)</button></p>` : ""}
+      ${STATIC ? `<h3>بدون اتصال</h3><p>يمكنك تثبيت الصفحة كتطبيق من قائمة المتصفح («إضافة إلى الشاشة الرئيسية»)، وحفظ المصحف كاملاً على جهازك لتقرأ دون إنترنت.</p><p><button class="btn" id="cacheAll">حفظ المصحف كاملاً على هذا الجهاز (11 ميغابايت تقريباً)</button></p>` : ""}
       <h3>كيف تستعمل الصفحة</h3>
       <p>اختر السورة، ثم اضغط على أي كلمة لترى حروفها وأحكامها ونطق الشيخ لها، ويمكنك فتح الفيديو بشاشة كاملة والكلمة ظاهرة تحته. اضغط على رقم الآية لفتح جدول التدريب أو تلاوة الشيخ للآية. استعمل أزرار الألوان لإظهار حكم أو إخفائه أثناء المراجعة.</p>
     </div>`;
@@ -1565,7 +1987,7 @@
   function updateSavebar() {
     const s = $("#saveStatus");
     if (!s) return;
-    s.textContent = DIRTY ? "لديك تعديلات لم تُحفظ بعد." : SAVE_NOTE || (STATE.savedAt ? "آخر حفظ: " + new Date(STATE.savedAt).toLocaleString("ar") : "لم تُحفظ أي تعديلات بعد.");
+    s.textContent = DIRTY ? "لديك تعديلات لم تُحفظ بعد." : SAVE_NOTE || (STATE.savedAt ? "آخر حفظ: " + new Date(STATE.savedAt).toLocaleString("ar-u-nu-latn") : "لم تُحفظ أي تعديلات بعد.");
   }
   function markDirty() { DIRTY = true; updateSavebar(); }
   function catPatch(id, patch) {
@@ -1705,7 +2127,7 @@
       <div class="bar"><div class="field"><label for="vS">السورة</label><select id="vS">${opts}</select></div><div class="field"><label for="vA">الآية</label><input id="vA" type="number" min="1" value="1" style="width:80px"></div>
       <button class="btn" id="vSync">مزامنة الكلمات</button></div>
       ${videoControlsHTML("v", false)}
-      <p style="font-size:12.5px">لفيديو كلمة واحدة افتح الكلمة في المصحف. ${STATIC ? "" : "حدّ الرفع المباشر ٢٠ ميغابايت."}</p></div>
+      <p style="font-size:12.5px">لفيديو كلمة واحدة افتح الكلمة في المصحف. ${STATIC ? "" : "حدّ الرفع المباشر 20 ميغابايت."}</p></div>
       <div class="list">${keys.map((k) => `<div class="item"><span class="grow">${esc(keyLabel(k))}${STATE.timings[k] ? " · مُزامن" : ""}</span>${keyOpen(k) ? `<button class="btn" data-open="${esc(k)}">فتح</button>` : ""}<button class="btn danger" data-delv="${esc(k)}">حذف</button></div>`).join("") || `<p class="empty">لم يُرفع أي فيديو بعد.</p>`}</div>`;
     const target = async () => { const s = +$("#vS", body).value, a = +$("#vA", body).value; const S = await loadSurah(s); const ai = S.ayahs.findIndex((x) => x.a === a); if (ai < 0) { toast("رقم الآية غير موجود في هذه السورة."); return null; } return { S, ai, key: `a:${s}:${a}` }; };
     const vUp = $("#vUp", body);
@@ -1772,6 +2194,8 @@
     };
   }
 
+  // ?audit exposes the drawing pipeline to the colour audit (test/audit.js); nothing changes for users.
+  if (/[?&]audit\b/.test(location.search)) window.__A = { analyze, loadSurah, colorsFor, partsOf, coverage, visibleSet, ovFor, meta: () => META, gly: () => GLY, T, CORE };
   /* ---------------- boot ---------------- */
   async function boot() {
     readKeyLink();
@@ -1796,6 +2220,7 @@
     });
     window.addEventListener("resize", setTopH);
     route();
+    if (TOK()) refreshMe().then(() => { if ((location.hash || "#home") === "#home") renderHome(); });
     // live state for signed-in viewers
     cap("db").then(async (db) => {
       if (!db) return;
@@ -1811,7 +2236,8 @@
       $("#ownerLink").hidden = false;
       if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
       if (GH.get()) { CAN_EDIT = true; $("#adminLink").hidden = false; setTopH(); }
-      if (CAN_EDIT && LS.get("welcome", 0)) { LS.del("welcome"); toast("مرحباً بك شيخنا. تمّ تفعيل أدوات الشيخ على هذا الجهاز.", 6000); }
+      if (SK() && LS.get("welcome", 0)) { $("#studentsLink").hidden = false; setTopH(); }
+      if ((CAN_EDIT || SK()) && LS.get("welcome", 0)) { LS.del("welcome"); toast("مرحباً بك شيخنا. تمّ تفعيل أدوات الشيخ على هذا الجهاز.", 6000); }
       const r = (location.hash || "#home").slice(1);
       if (r === "admin" || r === "about" || (CAN_EDIT && r === "mushaf")) route();
       setTimeout(maybeTour, 600);

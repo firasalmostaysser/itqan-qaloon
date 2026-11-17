@@ -1,6 +1,6 @@
 /* Offline support for «الطريق إلى الإتقان». Quran data is cached once and served from the device;
    the cheikh's settings (state.json) are always fetched fresh when online. Videos are never cached. */
-const VERSION = "itqan-v7";
+const VERSION = "itqan-v8";
 const CORE = ["./", "index.html", "manifest.webmanifest", "icons/icon-192.png"];
 
 self.addEventListener("install", (e) => {

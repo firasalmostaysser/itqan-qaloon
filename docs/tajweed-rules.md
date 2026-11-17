@@ -1,7 +1,7 @@
 # Tajweed colouring rules: the Sheikh's method, Qalun reading
 
 The rules this project uses to colour the Quran text and grade the drills, as they
-stand on 2026-11-13. They follow the method of the Sheikh, al-Muqri' Muhammad ibn
+stand on 2026-11-17. They follow the method of the Sheikh, al-Muqri' Muhammad ibn
 Abdallah Jawwad, in his course «الطريق إلى الإتقان», on the riwaya of Qalun ʿan
 Nafiʿ, and the spelling of the Tunisian «المصحف المعلّم».
 
@@ -97,8 +97,7 @@ By the letter read after it:
 - **A noon before و or ي inside one word** («الدُّنْيَا»، «صِنْوَانٌ») is إظهار.
 - **A noon or tanween before hamzat al-wasl** is not a sakin noon: it takes a kasra to
   join, so it has a light ghunnah and no colour.
-- **A noon followed by a waqf mark inside the ayah:** the reader may stop there, so it
-  has no ghunnah **(to confirm, §10)**.
+- **Pause marks inside the ayah are read on:** a noon or tanween before one keeps its rule.
 
 ### 5.3 The sakin mim
 
@@ -117,12 +116,14 @@ By the letter read after it:
   On «خَيْراً» the purple is on the alif's tanween. 143 places.
 - **The small meem of إقلاب** (ۢ), on a noon («مِنۢ بَعْدِ») or for a tanween («لَنَسْفَعاَۢ بِالنَّاصِيَةِ»):
   the **small meem** is purple and the letter stays ink. 27 places.
-- **A noon, mim or tanween merged into «نّ» or «مّ»** («رَبِّهِم مِّن»، «فَلَن نَّزِيدَكُمْ»، «جَزَآءً مِّن»):
-  **no colour of its own**, because the next letter's shadda already carries the ghunnah (§5.1).
-  42 places. Merged into و or ي, the purple stays on the noon or tanween (their shadda is not a ghunnah).
-- **A tanween read clearly (إظهار)** («يُسْراً ۝ إِنَّ»): its noon is a sakin noon, so its
-  second stroke is **cyan (ساكن بيني)** **(to confirm)**. 47 places.
-- **A tanween before ل or ر, or before hamzat al-wasl:** its second stroke takes no colour.
+- **A bare noon or mim merged into «نّ» or «مّ»** («رَبِّهِم مِّن»، «مِن نِّعْمَةٍ»): **no colour of its own**,
+  because the next letter's shadda carries the ghunnah (§5.1), as on the Sheikh's page of al-Layl.
+- **A tanween read clearly (إظهار)** («لِأَحَدٍ عِندَهُ»): its noon is a sakin noon, so its second stroke is
+  **cyan (ساكن بيني)**, as on the Sheikh's own page of al-Layl.
+- **A tanween before ل or ر** (إدغام بلا غنة): its noon becomes a sakin ل or ر, so its second stroke is **cyan**.
+- **A tanween merged into «نّ» or «مّ»**: its second stroke is **purple**, and so is the next letter's shadda.
+- **A tanween before hamzat al-wasl**: its noon is read with a kasra to join, so its second stroke is **navy**.
+- No stroke of a tanween is ever left without a colour.
 
 ### 5.5 Precedence on one letter
 
@@ -148,39 +149,21 @@ colour («اَ۬لصِّرَٰطَ»: an orange ص with a red shadda; «اَ۬ل
 
 ## 7. The end of an ayah
 
-### 7.1 The stop
+Every ayah ends on a stop, and **the stop is on a sukun** (the Sheikh's rule).
 
-The last letter of each ayah (in the Qalun count) and of the basmalah is **read with a
-sukun**. The reader stops on it, so:
+- **The last letter** takes its time colour on its shape («اَ۬لْعَٰلَمِينَ»: a cyan ن), and on its sign if one is written.
+- **Its written haraka stays navy**, as on the Sheikh's slides of al-Fatiha.
+- **A tanween at the end of an ayah** is stopped on too: the letter takes its time colour («مَّسَدٍ»: a green د;
+  «خَوْفٍ»: a red ف) and both strokes of the tanween are navy.
+- **A fatha tanween on an alif** («سَبِيلاً») is read as a madd alif: the letter before it is not stopped on.
+- **A final madd letter** («وَالضُّحَىٰ»): nothing to colour.
+- **A final ر with a kasra** keeps its kasra (an ink ر with a navy kasra).
+- **A final ة** is read as a sakin ه (red); its two dots stay ink.
+- **What the KFGQPC text writes for reading on is dropped at the end of an ayah:** the pause mark after the last word
+  (ۖ on almost every ayah), the small meem of iqlab into the next ayah or the next surah's basmalah («مَّسَدِۢ» → «مَّسَدٍ»),
+  and the open tanween (ࣰ ࣱ ࣲ ٖ ٗ ٞ → ً ٌ ٍ).
+- **The quarter-hizb mark «۞»** at the start of an ayah is not a word.
 
-- **its time colour goes on its shape**, and on its sign if one is written («اَ۬لْعَٰلَمِينَ»:
-  the final ن is cyan; «عَلَيْهِمْ» closing ayah 6: the م and its sukun are cyan);
-- **its written haraka is still navy**, as on the Sheikh's al-Fatiha slides;
-- **a final ن or م has no ghunnah**, unless doubled;
-- **a heavy last letter stays orange** («اَ۬لْفَلَقِ»);
-- **a final ة is read as a sakin ه** (رخو, red), and only its shape is coloured: its two dots
-  stay ink («اَ۬لْقَارِعَةُ»).
-
-### 7.2 Exceptions to the stop
-
-- **A final madd letter** («وَالضُّحَىٰ»): no sukun, nothing to colour.
-- **A final ر with a kasra** («اَ۬لْقَدْرِ»، «وَالْفَجْرِ»، «اَ۬لصُّدُورِ»): it keeps its kasra
-  and is not stopped on, so it is an ink ر with a navy kasra. 9 ayah ends.
-  A final ر with a fatha or damma is stopped on and takes the weight of the haraka before
-  it («اَ۬لْكَوْثَرَ»، «اَ۬لْأَبْتَرُ»: orange).
-- **A tanween at the end of an ayah is read on** into the next ayah: its ghunnah follows the
-  first letter of the next ayah («يُسْراً ۝ فَإِذَا»: إخفاء, the second stroke purple;
-  «تَقْوِيمٍ ۝ ثُمَّ»: إخفاء), and its letter is not stopped on. A final ة with a tanween is
-  then read as ت **(to confirm, §10)**. 165 ayah ends.
-  The mushaf agrees: before a merged or hidden noon it writes the open tanween (ࣰ ࣱ ࣲ),
-  and the plain one (ً ٌ ٍ) before إظهار.
-- **The last ayah of a surah** reads on into the next surah's basmalah (it starts with ب), so a
-  final tanween there is إقلاب: the mushaf writes it with the small meem («أَحَدُۢ»، «مَّسَدِۢ»).
-  Not after an-Nas, and not before at-Tawba (no basmalah). 13 surah ends.
-- **The quarter-hizb mark «۞»** at the start of an ayah is not a word: reading on skips it.
-- **A waqf mark on the last letter of an ayah** («۝ۖ») changes nothing.
-- **Waqf marks inside an ayah are not stops**, except for the ghunnah of a noon or tanween
-  just before one **(to confirm, §10)**.
 
 ## 8. The Qalun spelling of the Tunisian mushaf
 
@@ -206,7 +189,7 @@ the noon bare, and no shadda on the ي or و.
 - **The noon** is still sakin: purple, and إدغام بغنة in the table.
 - **The ي or و** has no shadda to colour.
 
-12 word pairs.
+The drawing follows the Tunisian spelling (733 word pairs in the whole Quran).
 
 ### 8.3 The dotless ي of an alif
 
@@ -220,57 +203,51 @@ A ي with its own haraka before the small alif («يَٰأَيُّهَا») keep
 
 ### 8.5 Hamzat al-wasl
 
-The mushaf marks hamzat al-wasl with a sign on the alif:
+As the Sheikh writes it (his slides and his Level 2 workbook): **one black dot on the alif**, for the haraka it is
+begun with when starting from it:
 
-- **its place** is the haraka before it: **above** after a fatha (168), **below** after a kasra (99),
-  **in the middle** after a damma (86);
-- **a small sign** shows the haraka it is begun with when starting from it: «۬» a fatha
-  (the article «ال»), «ٜ» a kasra («اِهْدِنَا»، «اِتَّخَذَ»).
+- **above** the alif: begun with a fatha (the article «ال»);
+- **below** the alif: begun with a kasra («اِهْدِنَا»، «اِبْتِغَآءَ»);
+- **in the middle**, beside the alif: begun with a damma.
 
-That gives six forms. After a one-letter prefix («وَالْجِبَالَ»، «فَالْ…»، «بِالْ…») the alif
-is written plain, with no sign (89 places). Hamzat al-wasl takes no colour.
+The sila stroke of the KFGQPC text is not drawn. After a one-letter prefix («وَالْجِبَالَ»، «بِالْ…») the alif is
+plain. Hamzat al-wasl takes no colour.
+
+An alif with a dot alone, or a dot followed by a haraka («يَشَآءُ إِلَىٰ»، «شُهَدَآءَ إِذْ»), is not a hamzat al-wasl:
+it is the second of two hamzas meeting across two words, eased or substituted by Qalun, and it is pronounced.
+
+### 8.6 Numbers
+
+Ayah numbers and every number on the site are in Western digits (1 2 3), as in the Sheikh's books.
+
 
 ## 9. The drills
 
-The answers come from the rules above. **«تحقّق» and «اعرض الحل» are for the teacher.**
+They follow the Sheikh's lesson: **the coloured surah**, then **«اكتب السورة مع الضبط»**, then **«املأ الجداول»**.
+Each level shows only the drills the Sheikh chose for it. Every drill works on the whole surah or ayah by ayah.
 
-In the three colour and table drills, hamzat al-wasl is drawn as a **plain alif**, so they do
-not give away the fourth drill. The teacher's presentation («عرض») keeps its marks.
+1. **ورقة الكتابة** (تدريب 1): the surah printed in faint outline in the framed page, to be written over with its dabt.
+2. **التلوين:** the student picks a colour and taps a part (the letter, its shadda, sukun, haraka, or one stroke of a
+   tanween). Each part is graded on its own.
+3. **أزمنة الحروف:** each word goes into every column of a colour one of its letters takes.
+4. **النون الساكنة والتنوين والميم الساكنة:** the Sheikh's table (الإظهار، الإدغام بغنة / بلا غنة، القلب، الإخفاء;
+   الإدغام، الإخفاء، الإظهار الشفوي).
+5. **المدود:** the word is given with its madd letter marked; the student picks the type (طبيعي، متصل، منفصل، لازم،
+   عارض للسكون، بدل، لين، صلة صغرى، صلة كبرى) and its length for Qalun (2 / 2 or 4 / 4 or 5 / 6 / 2, 4 or 6). The check
+   shows the reason. A whole surah gives at most two words of each type.
+6. **الراءات:** تفخيم or ترقيق for each ra, with the reason.
+7. **المخارج والصفات:** for the letters of the lesson (chosen by the Sheikh for each surah; the throat letters
+   otherwise): the makhraj, the qualities with an opposite, and those without.
+8. **همزة الوصل:** every hamzat al-wasl is a plain alif; the student picks one of the three forms (§8.5).
 
-1. **التلوين:** the student picks one of the six colours and taps a letter. The brush puts
-   each colour on its part (§1–§6):
-   - a ساكن colour on the sukun or shadda (on the shape of a letter stopped on);
-   - navy on the harakat;
-   - purple on the second stroke of a tanween, the small meem, the shadda of «نّ مّ», or the letter;
-   - orange on the letter.
+«وضع الامتحان» hides the answer and accepts one submission. Results go to the Sheikh when the student has joined a cohort.
 
-   Grading counts each asked part once, in the layer of its colour. A colour on a part
-   that asks for none counts as extra.
-2. **أزمنة الحروف:** ayah by ayah, each word goes into every column of a colour one of its
-   letters takes (رخو، بيني، شديد، الغنة، الحركات، التخليص). One word can go into several columns.
-   The basmalah opens the drill.
-3. **أحكام النون الساكنة والتنوين والميم الساكنة:** the Sheikh's table, ayah by ayah:
-   - **النون الساكنة والتنوين:** الإظهار، الإدغام (بغنة / بلا غنة)، القلب، الإخفاء;
-   - **الميم الساكنة:** الإدغام، الإخفاء، الإظهار.
-
-   The table reads on across ayah ends. «نّ / مّ» are not asked: they have no column.
-   After checking, each rule shows on the part the colouring drill colours (§5.4), in that
-   colour. A rule merged into «لّ / رّ» shows on that shadda.
-4. **همزة الوصل:** every marked hamzat al-wasl is a plain alif. The student picks one of the
-   six forms (§8.5). The answer is the mushaf's own form. The 89 unmarked alifs after a prefix
-   are not asked.
 
 ## 10. Open points (to confirm with the Sheikh)
 
-- **The tanween read clearly (إظهار):** is its second stroke cyan (ساكن بيني) (§5.4)?
-- **A ة with a tanween at the end of an ayah** («خَٰشِعَةٌ»، «وَاجِفَةٌ»، 38 places): read on, as
-  now (an ink ة, the tanween's noon coloured), or stopped and read as ه (§7.1)?
-- **A tanween or noon before a «ۖ» (صلى) inside the ayah** («شَيْـٔاً ۖ وَالْأَمْرُ» 82:19,
-  «مِسْكٌ ۖ وَفِے» 83:26): no ghunnah, as a stop (now), or read on with its ghunnah, as صلى prefers?
-  The table drill already reads on.
-- **The meem al-jamʿ** («عَلَيْهِمْ»): Qalun reads it with sukun or with silah (عَلَيْهِمُو). The
-  drills follow the written sukun.
-- **The Hafs text** of the first version (M0) follows older rules and is not covered here.
+- **The meem al-jamʿ** («عَلَيْهِمْ»): Qalun reads it with sukun or with silah (عَلَيْهِمُو). The drills follow the written sukun.
+- **A madd letter at the end of an ayah before a hamza** («تُجْزَىٰ ۝ إِلَّا»): the colouring stops on the ayah, the madd
+  table counts it as منفصل (joining the ayahs), as in the Sheikh's workbook.
 
 ---
 
