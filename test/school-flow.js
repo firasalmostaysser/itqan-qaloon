@@ -44,12 +44,13 @@ const api = {
     return row;
   },
   itqan_t_delete({ p_kind, p_id }) { const t = { level: "levels", cohort: "cohorts", student: "students", session: "sessions", evaluation: "evaluations" }[p_kind]; db[t] = db[t].filter((x) => x.id !== p_id); return null; },
-  itqan_t_level_program({ p_id, p_program }) { const l = db.levels.find((x) => x.id === p_id); if (l) l.program = p_program; return null; },
   itqan_t_student({ p_student }) { return { ...me(p_student), attempts: [] }; },
 };
 (async () => {
   const b = await chromium.launch(), errors = [];
   const ctx = await b.newContext({ viewport: { width: 1000, height: 900 } });
+  // the page reads the database address from site.json: point it at the stand-in
+  await ctx.route("**/data/site.json*", (route) => route.fulfill({ contentType: "application/json", body: JSON.stringify({ repo: "", branch: "main", statePath: "site/data/state.json", supabase: { url: "https://stub.supabase.co", key: "stub" } }) }));
   await ctx.route("https://*.supabase.co/rest/v1/rpc/*", async (route) => {
     const fn = route.request().url().split("/").pop(), r = api[fn](JSON.parse(route.request().postData() || "{}"));
     if (r && r.status) return route.fulfill({ status: r.status, contentType: "application/json", body: JSON.stringify(r.body) });

@@ -1492,9 +1492,7 @@
       $(".lAdd", box).onchange = async (e) => { if (!e.target.value) return; sur.push(+e.target.value); await tsave("level", { id: l.id, surahs: sur }); renderStudents(); };
       $$("[data-rm]", box).forEach((b) => (b.onclick = async () => { sur.splice(+b.dataset.rm, 1); await tsave("level", { id: l.id, surahs: sur }); renderStudents(); }));
       $(".lSave", box).onclick = async () => {
-        const pg = $(".lProg", box).value.trim();
-        if (pg && pg !== l.program) await DB.rpc("itqan_t_level_program", { p_key: SK(), p_id: l.id, p_program: pg });
-        await tsave("level", { id: l.id, name: $(".lName", box).value.trim() || l.name, description: $(".lDesc", box).value.trim() }); toast("حُفظ المستوى."); renderStudents();
+        await tsave("level", { id: l.id, program: $(".lProg", box).value.trim(), name: $(".lName", box).value.trim() || l.name, description: $(".lDesc", box).value.trim() }); toast("حُفظ المستوى."); renderStudents();
       };
       $(".lDel", box).onclick = async (e) => { if (!e.target.dataset.sure) { e.target.dataset.sure = 1; e.target.textContent = "تأكيد الحذف"; return; } await tdel("level", l.id); renderStudents(); };
     });
