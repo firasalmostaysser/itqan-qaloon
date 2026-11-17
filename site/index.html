@@ -439,6 +439,12 @@ textarea.full { width: 100%; font: inherit; padding: 8px; border: 1px solid var(
 
 /* the basmalah on its own line at the head of a drill */
 .bsm { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 .25em; width: 100%; margin-bottom: .2em; }
+
+/* who is signed in, and the way out */
+.acct { display: inline-flex; align-items: center; gap: 4px; margin-inline-start: 6px; padding-inline-start: 8px; border-inline-start: 1px solid var(--line); font-size: 13px; }
+.acct .who { color: var(--zitouna); font-weight: 600; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acct a { color: var(--zitouna); }
+.lgNew[hidden] { display: none; }
 </style>
 <style id="catvars"></style>
 </head>
@@ -452,7 +458,7 @@ textarea.full { width: 100%; font: inherit; padding: 8px; border: 1px solid var(
         <span><h1>أكاديمية الزيتونة</h1><small>للقرآن الكريم والقراءات القرآنية · الشيخ المقرئ محمّد بن عبد الله جوّاد</small></span>
       </a>
       <nav class="nav" aria-label="الأقسام">
-        <a href="#home">دروسي</a><a href="#progress">نتائجي</a><a href="#students" id="studentsLink" hidden>الطلاب</a><a href="#admin" class="admin-link" id="adminLink" hidden>الإعدادات</a>
+        <a href="#home">دروسي</a><a href="#progress">نتائجي</a><a href="#students" id="studentsLink" hidden>الطلاب</a><a href="#admin" class="admin-link" id="adminLink" hidden>الإعدادات</a><span class="acct" id="acct"></span>
       </nav>
     </div>
   </header>
@@ -463,10 +469,11 @@ textarea.full { width: 100%; font: inherit; padding: 8px; border: 1px solid var(
     <section class="view" id="v-practice" hidden></section>
     <section class="view" id="v-progress" hidden></section>
     <section class="view" id="v-students" hidden></section>
+    <section class="view" id="v-login" hidden></section>
     <section class="view" id="v-about" hidden></section>
     <section class="view" id="v-admin" hidden></section>
   </main>
-  <footer class="foot"><span>النص والخط: مجمّع الملك فهد لطباعة المصحف الشريف (نص رواية قالون بخط المصحف العثماني).</span><span>طريقة الألوان: الشيخ المقرئ محمّد بن عبد الله جوّاد.</span><span><a href="#about" style="color:inherit">عن الطريقة</a> · <a href="#students" id="ownerLink" hidden style="color:inherit">دخول الشيخ</a></span></footer>
+  <footer class="foot"><span>النص والخط: مجمّع الملك فهد لطباعة المصحف الشريف (نص رواية قالون بخط المصحف العثماني).</span><span>طريقة الألوان: الشيخ المقرئ محمّد بن عبد الله جوّاد.</span><span><a href="#about" style="color:inherit">عن الطريقة</a> · <a href="#login" id="ownerLink" hidden style="color:inherit">دخول الشيخ</a></span></footer>
   <div id="sheetRoot"></div>
   <div id="stageRoot"></div>
   <div class="toast" id="toast" role="status" hidden></div>
@@ -1236,12 +1243,13 @@ textarea.full { width: 100%; font: inherit; padding: 8px; border: 1px solid var(
     t.textContent = msg; t.hidden = false;
     clearTimeout(toast.t); toast.t = setTimeout(() => (t.hidden = true), ms || 3800);
   }
-  const ROUTES = ["home", "mushaf", "practice", "progress", "students", "about", "admin"];
+  const ROUTES = ["home", "mushaf", "practice", "progress", "students", "login", "about", "admin"];
   function route() {
     readSchoolLink();
     let r = (location.hash || "#home").slice(1);
     if (!ROUTES.includes(r)) r = "home";
     const sl = $("#studentsLink"); if (sl) sl.hidden = !SK();
+    updateAccount();
     if (r === "admin" && !CAN_EDIT) r = "admin";
     for (const v of $$(".view")) v.hidden = v.id !== "v-" + r;
     for (const a of $$(".nav a")) a.setAttribute("aria-current", a.getAttribute("href") === "#" + r ? "page" : "false");
@@ -1251,6 +1259,7 @@ textarea.full { width: 100%; font: inherit; padding: 8px; border: 1px solid var(
     else if (r === "practice") renderPractice();
     else if (r === "progress") renderProgress();
     else if (r === "students") renderStudents();
+    else if (r === "login") renderLogin();
     else if (r === "about") renderAbout();
     else if (r === "admin") renderAdmin();
     window.scrollTo(0, 0);
@@ -2173,9 +2182,138 @@ textarea.full { width: 100%; font: inherit; padding: 8px; border: 1px solid var(
   /* ---------------- the school (Supabase) ----------------
      The page talks to the database only through the itqan_* functions: a student is known by the token he got
      when he joined his cohort, the cheikh by his key. Without a connection everything still works on the device. */
+  /* ---------------- trial mode: the school kept on this device ----------------
+     Until the school has its own Supabase project, the same functions run here in the browser: the cheikh and the
+     students sign in without a password, and the data stays on the device (try both roles on one phone). */
+  const TRIAL = () => !(SITE.supabase && SITE.supabase.url && SITE.supabase.key);
+  const LocalDB = (() => {
+    const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+    const today = () => new Date().toISOString().slice(0, 10);
+    const code = () => Array.from({ length: 6 }, () => "ABCDEFGHJKMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 31)]).join("");
+    const seed = () => {
+      const l1 = { id: uid(), program: "التجويد العملي", name: "المستوى الأول", description: "أزمنة الحروف، إتمام الحركات، تخليص الحروف، ضبط همزة الوصل", surahs: [1, 114, 113, 112, 111], sort: 1, config: { drills: ["paint", "time", "wasl"] } };
+      const l2 = { id: uid(), program: "التجويد العملي", name: "المستوى الثاني", description: "النون الساكنة والتنوين والميم الساكنة، المدود، الراءات، المخارج والصفات", surahs: [92], sort: 2, config: { drills: ["paint", "nun", "madd", "ra", "huruf"], letters: { 92: "ء ه ع" } } };
+      return { levels: [l1, l2], cohorts: [{ id: uid(), level_id: l1.id, name: "الدفعة الأولى", join_code: code(), live_url: "", schedule: "", active: true, created_at: new Date().toISOString() }],
+        students: [], sessions: [], attendance: [], evaluations: [], attempts: [] };
+    };
+    let db = LS.get("trialdb", null) || seed();
+    const save = () => LS.set("trialdb", db);
+    const fail = (m) => { const e = new Error(m); e.msg = m; e.status = 400; throw e; };
+    const pc = (a) => (a.total ? Math.round((100 * a.right) / a.total) : null);
+    const me = (sid) => {
+      const s = db.students.find((x) => x.id === sid); if (!s) fail("bad_token");
+      s.last_seen = new Date().toISOString();
+      const c = db.cohorts.find((x) => x.id === s.cohort_id), l = c && db.levels.find((x) => x.id === c.level_id), prog = {};
+      for (const a of db.attempts.filter((x) => x.student_id === sid)) { const k = a.surah + "|" + a.kind, o = prog[k] || (prog[k] = { surah: a.surah, kind: a.kind, n: 0, best: null, exam: null }); o.n++; o.best = Math.max(o.best || 0, pc(a)); if (a.exam) o.exam = Math.max(o.exam || 0, pc(a)); }
+      return { student: { id: s.id, name: s.name }, cohort: c ? { id: c.id, name: c.name, live_url: c.live_url, schedule: c.schedule } : null, level: l || null,
+        sessions: db.sessions.filter((x) => x.cohort_id === s.cohort_id).sort((a, b) => (a.at < b.at ? 1 : -1)).map((x) => ({ ...x, status: (db.attendance.find((a) => a[0] === x.id && a[1] === sid) || [])[2] || null })),
+        evaluations: db.evaluations.filter((e) => e.student_id === sid), progress: Object.values(prog) };
+    };
+    const byTok = (t) => db.students.find((x) => x.token === t) || fail("bad_token");
+    const T2 = { level: "levels", cohort: "cohorts", student: "students", session: "sessions", evaluation: "evaluations" };
+    const api = {
+      itqan_join({ p_code, p_name }) {
+        const c = db.cohorts.find((x) => x.join_code === String(p_code || "").trim().toUpperCase() && x.active) || fail("bad_code");
+        if (String(p_name || "").trim().length < 2) fail("name_required");
+        const s = { id: uid(), cohort_id: c.id, name: p_name.trim().slice(0, 60), phone: "", token: "t-" + uid(), active: true, created_at: new Date().toISOString(), last_seen: new Date().toISOString() };
+        db.students.push(s); save(); return { token: s.token, ...me(s.id) };
+      },
+      itqan_me({ p_token }) { const r = me(byTok(p_token).id); save(); return r; },
+      itqan_attempt(a) { const s = byTok(a.p_token); db.attempts.push({ student_id: s.id, at: new Date().toISOString(), surah: a.p_surah, kind: a.p_kind, scope: a.p_scope, right: a.p_right, total: a.p_total, wrong: a.p_wrong, exam: !!a.p_exam, errors: (a.p_errors || []).slice(0, 60) }); save(); return null; },
+      itqan_t_data() {
+        const prog = {}, errs = {};
+        for (const a of db.attempts) {
+          const k = [a.student_id, a.surah, a.kind].join("|"), o = prog[k] || (prog[k] = [a.student_id, a.surah, a.kind, 0, null, null, a.at]);
+          o[3]++; o[4] = Math.max(o[4] || 0, pc(a)); if (a.exam) o[5] = Math.max(o[5] || 0, pc(a)); if (a.at > o[6]) o[6] = a.at;
+          for (const e of a.errors) { const ek = [a.student_id, a.kind, e[1] || e[2], e[0]].join("|"); errs[ek] = (errs[ek] || 0) + (+e[3] || 1); }
+        }
+        return { teacher: "الشيخ", levels: db.levels.slice().sort((a, b) => a.sort - b.sort), cohorts: db.cohorts, students: db.students.map(({ token, ...s }) => s).sort((a, b) => a.name.localeCompare(b.name, "ar")),
+          sessions: db.sessions.slice().sort((a, b) => (a.at < b.at ? 1 : -1)), attendance: db.attendance, evaluations: db.evaluations.slice().sort((a, b) => (a.at < b.at ? 1 : -1)),
+          progress: Object.values(prog), errors: Object.entries(errs).map(([k, c]) => { const [s, kind, rule, word] = k.split("|"); return [s, kind, rule, word, c]; }) };
+      },
+      itqan_t_save({ p_kind, p_row }) {
+        if (p_kind === "attendance") {
+          db.attendance = db.attendance.filter((a) => !(a[0] === p_row.session_id && a[1] === p_row.student_id));
+          if (p_row.status) db.attendance.push([p_row.session_id, p_row.student_id, p_row.status, p_row.note || ""]);
+          save(); return {};
+        }
+        const t = T2[p_kind] || fail("bad_kind");
+        let row = p_row.id && db[t].find((x) => x.id === p_row.id);
+        if (!row) {
+          if (p_kind === "student") fail("students join with the cohort code");
+          row = { id: uid(), created_at: new Date().toISOString() };
+          Object.assign(row, { level: { program: "التجويد العملي", name: "مستوى جديد", description: "", surahs: [], sort: 0, config: {} }, cohort: { level_id: null, name: "دفعة جديدة", join_code: code(), live_url: "", schedule: "", active: true },
+            session: { at: today(), title: "", surah: null }, evaluation: { at: today(), surah: null, scores: {}, note: "" } }[p_kind]);
+          db[t].push(row);
+        }
+        const r = Object.assign({}, p_row); delete r.id; delete r.new_code;
+        if ("surah" in r) r.surah = r.surah === "" || r.surah == null ? null : +r.surah;
+        if ("level_id" in r && r.level_id === "") r.level_id = null;
+        if ("program" in r && !r.program) delete r.program;
+        Object.assign(row, r);
+        if (p_row.new_code) row.join_code = code();
+        save(); const { token, ...out } = row; return out;
+      },
+      itqan_t_delete({ p_kind, p_id }) {
+        const t = T2[p_kind] || fail("bad_kind");
+        db[t] = db[t].filter((x) => x.id !== p_id);
+        if (p_kind === "cohort") { const ss = db.sessions.filter((x) => x.cohort_id === p_id).map((x) => x.id); db.sessions = db.sessions.filter((x) => x.cohort_id !== p_id); db.attendance = db.attendance.filter((a) => !ss.includes(a[0])); db.students.forEach((s) => { if (s.cohort_id === p_id) s.cohort_id = null; }); }
+        if (p_kind === "session") db.attendance = db.attendance.filter((a) => a[0] !== p_id);
+        if (p_kind === "student") { db.attendance = db.attendance.filter((a) => a[1] !== p_id); db.evaluations = db.evaluations.filter((e) => e.student_id !== p_id); db.attempts = db.attempts.filter((a) => a.student_id !== p_id); }
+        if (p_kind === "level") db.cohorts.forEach((c) => { if (c.level_id === p_id) c.level_id = null; });
+        save(); return null;
+      },
+      itqan_t_student({ p_student }) { return { ...me(p_student), attempts: [] }; },
+      // trial only: the sign-in page lists the cohorts and their students (no password)
+      trial_cohorts() { return db.cohorts.filter((c) => c.active).map((c) => ({ id: c.id, name: c.name, code: c.join_code, level: (db.levels.find((l) => l.id === c.level_id) || {}).name || "", students: db.students.filter((s) => s.cohort_id === c.id && s.active).map((s) => ({ id: s.id, name: s.name, token: s.token })) })); },
+      trial_reset() { db = seed(); save(); return null; },
+    };
+    return { call: async (fn, args) => JSON.parse(JSON.stringify((api[fn] || (() => fail("unknown " + fn)))(args || {}))) };
+  })();
+  /** The sign-in page of the trial: who are you? No password for now. */
+  function renderLogin() {
+    const v = $("#v-login");
+    if (!TRIAL()) { location.hash = "#students"; return; }
+    LocalDB.call("trial_cohorts").then((cs) => {
+      v.innerHTML = `<h2 class="page-title">الدخول</h2><p class="lead">نسخة تجريبية: الدخول بلا كلمة سر، والبيانات محفوظة على هذا الجهاز فقط.</p>
+        <div class="grid">
+          <div class="card"><h3>أنا الشيخ</h3><p>المستويات والدفعات والحضور والتقييم والتقارير.</p><button class="btn primary" id="lgT">دخول الشيخ</button></div>
+          <div class="card"><h3>أنا طالب</h3>
+            ${cs.length ? `<div class="kv"><label for="lgC">الدفعة</label><select id="lgC">${cs.map((c) => `<option value="${c.id}">${esc(c.name)}${c.level ? " · " + esc(c.level) : ""}</option>`).join("")}</select>
+            <label for="lgS">اسمي</label><select id="lgS"></select><label for="lgN" class="lgNew">الاسم الجديد</label><input id="lgN" class="lgNew" placeholder="الاسم واللقب"></div>
+            <button class="btn primary" id="lgGo">دخول الطالب</button>` : `<p>لا توجد دفعة بعد: يدخل الشيخ أوّلاً وينشئ دفعة.</p>`}</div>
+        </div>
+        <p class="note"><button class="linkbtn danger" id="lgReset">مسح بيانات التجربة من هذا الجهاز</button></p>`;
+      $("#lgT", v).onclick = () => { LS.set("sk", "trial"); TD = null; route(); location.hash = "#students"; };
+      if (cs.length) {
+        const fill = () => { const c = cs.find((x) => x.id === $("#lgC", v).value); $("#lgS", v).innerHTML = c.students.map((s) => `<option value="${esc(s.token)}">${esc(s.name)}</option>`).join("") + `<option value="">+ طالب جديد</option>`; showNew(); };
+        const showNew = () => $$(".lgNew", v).forEach((x) => (x.hidden = !!$("#lgS", v).value));
+        $("#lgC", v).onchange = fill; $("#lgS", v).onchange = showNew; fill();
+        $("#lgGo", v).onclick = async () => {
+          const tok = $("#lgS", v).value;
+          try {
+            if (tok) { LS.set("stok", tok); ME = null; LS.del("me"); await refreshMe(); }
+            else { const c = cs.find((x) => x.id === $("#lgC", v).value), n = $("#lgN", v).value.trim(); if (n.length < 2) { toast("اكتب اسمك."); return; } await joinCohort(c.code, n); }
+            location.hash = "#home";
+          } catch (e) { toast("تعذّر الدخول."); }
+        };
+      }
+      $("#lgReset", v).onclick = async (e) => { if (!e.target.dataset.sure) { e.target.dataset.sure = 1; e.target.textContent = "اضغط مرة أخرى: تُمسح كل بيانات التجربة"; return; } await LocalDB.call("trial_reset"); signOut(); };
+    });
+  }
+  /** Sign out of either role on this device. */
+  function signOut() { LS.del("sk"); LS.del("stok"); LS.del("me"); ME = null; TD = null; Object.assign(SV, { tab: "overview", cohort: null, student: null, session: null }); location.hash = "#home"; route(); }
+  function updateAccount() {
+    const a = $("#acct"); if (!a) return;
+    const who = SK() ? "الشيخ" : TOK() && ME ? ME.student.name : "";
+    a.innerHTML = who ? `<span class="who">${esc(who)}</span><button class="linkbtn" id="acctOut">خروج</button>` : (TRIAL() || DB.ok()) ? `<a href="${TRIAL() ? "#login" : "#home"}">دخول</a>` : "";
+    const o = $("#acctOut", a); if (o) o.onclick = signOut;
+    const ol = $("#ownerLink"); if (ol && STATIC) ol.hidden = !!who;
+  }
   const DB = {
-    ok: () => !!(SITE.supabase && SITE.supabase.url && SITE.supabase.key),
+    ok: () => true, // the school runs on Supabase when site.json names a project, else on this device (trial)
     async rpc(fn, args) {
+      if (TRIAL()) return LocalDB.call(fn, args);
       const r = await fetch(`${SITE.supabase.url}/rest/v1/rpc/${fn}`, { method: "POST", headers: { apikey: SITE.supabase.key, "Content-Type": "application/json" }, body: JSON.stringify(args || {}) });
       const t = await r.text(); let j = null;
       try { j = t ? JSON.parse(t) : null; } catch (e) { /* not json */ }
@@ -2192,7 +2330,7 @@ textarea.full { width: 100%; font: inherit; padding: 8px; border: 1px solid var(
   const sName = (n) => (META.surahs[n - 1] || {}).ar || "";
   async function refreshMe() {
     if (!TOK() || !DB.ok()) return ME;
-    try { ME = await DB.rpc("itqan_me", { p_token: TOK() }); LS.set("me", ME); await flushOutbox(); }
+    try { ME = await DB.rpc("itqan_me", { p_token: TOK() }); LS.set("me", ME); updateAccount(); await flushOutbox(); }
     catch (e) { if (e.msg === "bad_token") { LS.del("stok"); LS.del("me"); ME = null; } }
     return ME;
   }
@@ -2228,7 +2366,7 @@ textarea.full { width: 100%; font: inherit; padding: 8px; border: 1px solid var(
     try { await navigator.clipboard.writeText(url); toast("نُسخ الرابط."); } catch (e) { prompt("انسخ الرابط:", url); }
   }
   function joinCardHTML() {
-    if (!DB.ok()) return "";
+    if (TRIAL()) return `<div class="card join"><h3 class="sec" style="margin-top:0">الدخول</h3><p>نسخة تجريبية: ادخل شيخاً أو طالباً دون كلمة سر.</p><div class="bar"><a class="btn primary" href="#login">دخول</a></div></div>`;
     return `<div class="card join"><h3 class="sec" style="margin-top:0">انضمّ إلى دفعتك</h3>
       <p>اكتب الرمز الذي أعطاك إياه الشيخ واسمك، فتظهر لك سور مستواك وتصل نتائجك إلى الشيخ وحدها.</p>
       <div class="bar"><div class="field"><label for="jCode">رمز الدفعة</label><input id="jCode" dir="ltr" maxlength="8" autocomplete="off" style="width:110px;text-transform:uppercase" value="${esc(LS.get("joinCode", ""))}"></div>
@@ -2286,6 +2424,7 @@ textarea.full { width: 100%; font: inherit; padding: 8px; border: 1px solid var(
   async function renderStudents() {
     const v = $("#v-students");
     if (!DB.ok()) { v.innerHTML = `<h2 class="page-title">الطلاب</h2><p class="empty">لم تُربط قاعدة البيانات بعد.</p>`; return; }
+    if (!SK() && TRIAL()) { location.hash = "#login"; return; }
     if (!SK()) {
       v.innerHTML = `<h2 class="page-title">دخول الشيخ</h2><p class="lead">افتح «رابط الشيخ» الذي وصلك مرة واحدة على هذا الجهاز، أو الصق مفتاح الشيخ هنا.</p>
         <div class="bar"><div class="field grow"><label for="skIn">مفتاح الشيخ</label><input id="skIn" dir="ltr" autocomplete="off"></div><button class="btn primary" id="skGo">دخول</button></div>`;
@@ -2508,8 +2647,8 @@ textarea.full { width: 100%; font: inherit; padding: 8px; border: 1px solid var(
       <h3 class="sec">ما تحتاج التركيز عليه</h3>${focusHTML(errStats(rowsOf(A)))}
       ${sess.length ? `<h3 class="sec">حضوري</h3><div class="chips">${sess.map((x) => { const S = STATUS.find((y) => y[0] === x.status); return `<span class="chip small att-${x.status || "none"}">${fmtDate(x.at)}${x.surah ? " · " + esc(sName(x.surah)) : ""} · ${S ? S[1] : "لم يُسجَّل"}</span>`; }).join("")}</div>` : ""}
       <h3 class="sec">محاولاتي</h3>${A.length ? attemptsTable(A) : `<p class="empty">لم تُجرِ أي تمرين بعد.</p>`}
-      ${me ? `<p class="note">لفتح حسابك على جهاز آخر: <button class="linkbtn" id="myLink">أرسل رابط حسابي إلى نفسي</button> · <button class="linkbtn" id="logout">خروج من هذا الجهاز</button></p>` : ""}`;
-    if (me) {
+      ${me && !TRIAL() ? `<p class="note">لفتح حسابك على جهاز آخر: <button class="linkbtn" id="myLink">أرسل رابط حسابي إلى نفسي</button> · <button class="linkbtn" id="logout">خروج من هذا الجهاز</button></p>` : ""}`;
+    if (me && !TRIAL()) {
       $("#myLink", v).onclick = () => shareText("حسابي في الطريق إلى الإتقان", siteUrl() + "#s=" + encodeURIComponent(TOK()));
       $("#logout", v).onclick = (e) => { if (!e.target.dataset.sure) { e.target.dataset.sure = 1; e.target.textContent = "اضغط مرة أخرى للتأكيد"; return; } LS.del("stok"); LS.del("me"); ME = null; location.hash = "#home"; };
     }
@@ -3190,7 +3329,7 @@ textarea.full { width: 100%; font: inherit; padding: 8px; border: 1px solid var(
     });
     window.addEventListener("resize", setTopH);
     route();
-    if (TOK()) refreshMe().then(() => { if ((location.hash || "#home") === "#home") renderHome(); });
+    if (TOK()) refreshMe().then(() => { updateAccount(); if ((location.hash || "#home") === "#home") renderHome(); });
     // live state for signed-in viewers
     cap("db").then(async (db) => {
       if (!db) return;

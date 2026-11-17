@@ -423,3 +423,9 @@ textarea.full { width: 100%; font: inherit; padding: 8px; border: 1px solid var(
 
 /* the basmalah on its own line at the head of a drill */
 .bsm { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 .25em; width: 100%; margin-bottom: .2em; }
+
+/* who is signed in, and the way out */
+.acct { display: inline-flex; align-items: center; gap: 4px; margin-inline-start: 6px; padding-inline-start: 8px; border-inline-start: 1px solid var(--line); font-size: 13px; }
+.acct .who { color: var(--zitouna); font-weight: 600; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acct a { color: var(--zitouna); }
+.lgNew[hidden] { display: none; }
