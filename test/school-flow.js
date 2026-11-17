@@ -71,7 +71,7 @@ const api = {
   await p.click('#v-home .scard[data-s="111"]'); await p.waitForTimeout(1500);
   await shot(p, "3-mushaf");
   await p.click('#v-mushaf #stabs button[data-st="paint"]'); await p.waitForTimeout(800);
-  await p.click("#pAyah use[data-c]"); await p.click("#ptCheck"); await p.waitForTimeout(600);
+  await p.click("#pAyah use[data-c]", { force: true }); await p.click("#ptCheck"); await p.waitForTimeout(600);
   console.log("attempts sent:", db.attempts.length);
   await p.click('#v-practice #stabs button[data-st="time"]'); await p.waitForTimeout(500);
   await p.click("#pExam"); await p.waitForTimeout(300); await p.click('[data-pw="1000"]'); await p.click("td[data-col]"); await p.click("#pCheck"); await p.waitForTimeout(600);
